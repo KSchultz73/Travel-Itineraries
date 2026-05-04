@@ -450,6 +450,45 @@
     }
     .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
 
+    /* ── Edit buttons ──────────────────────────────────── */
+    .component-actions { display:flex; gap:6px; align-items:center; }
+    .btn-edit  { padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600; background:#eff6ff; color:var(--blue); border:1px solid #bfdbfe; }
+    .btn-edit:hover { background:#dbeafe; }
+    .btn-del   { padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600; background:#fef2f2; color:var(--red); border:1px solid #fecaca; }
+    .btn-del:hover { background:#fee2e2; }
+    .btn-add-comp { display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; margin-bottom:16px; }
+    .btn-add-comp:hover { background:#dcfce7; }
+
+    /* ── Modal ─────────────────────────────────────────── */
+    .modal-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:300;
+      display:flex; align-items:center; justify-content:center; padding:20px;
+    }
+    .modal {
+      background:var(--card); border-radius:14px; padding:28px;
+      max-width:580px; width:100%; box-shadow:var(--shadow-lg);
+      max-height:90vh; overflow-y:auto;
+    }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+    .modal-header h2 { font-size:18px; font-weight:700; }
+    .modal-close { font-size:22px; color:var(--muted); line-height:1; padding:0 4px; }
+    .modal-close:hover { color:var(--text); }
+    .seg-block { border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:12px; background:#fafafa; }
+    .seg-block-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--muted); }
+
+    /* ── Print ─────────────────────────────────────────── */
+    @media print {
+      #sidebar, #topbar, .btn, .tabs, .tab-btn, .btn-edit, .btn-del,
+      .btn-add-comp, .mobile-menu-btn { display:none !important; }
+      #main-area { margin-left:0 !important; }
+      #content { padding:0 !important; }
+      .trip-hero { background:#1e3a5f !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      .flight-booking, .hotel-card, .car-card, .cruise-card, .activity-item { break-inside:avoid; }
+      #print-section { display:block !important; }
+      #normal-section { display:none !important; }
+    }
+    #print-section { display:none; }
+
     /* ── Responsive ────────────────────────────────────── */
     @media (max-width: 768px) {
       #sidebar { transform: translateX(-100%); }
@@ -515,6 +554,18 @@
         Connect to Dropbox →
       </button>
     </div>
+  </div>
+</div>
+
+<!-- ── Modal ─────────────────────────────────────────── -->
+<div id="modal-overlay" class="modal-overlay hidden">
+  <div class="modal" id="modal-box">
+    <div class="modal-header">
+      <h2 id="modal-title"></h2>
+      <button class="modal-close" onclick="Modal.hide()">×</button>
+    </div>
+    <div id="modal-body"></div>
+    <div class="form-actions" id="modal-actions"></div>
   </div>
 </div>
 
@@ -971,7 +1022,12 @@ const Views = {
           <span>📅 ${dur}</span>
           ${dest ? `<span>📍 ${h(dest)}</span>` : ''}
         </div>
-        <div class="component-badges">${allBadges || '<span style="opacity:.6;font-size:13px">No components recorded</span>'}</div>
+        <div class="component-badges" style="margin-bottom:14px">${allBadges || '<span style="opacity:.6;font-size:13px">No components recorded</span>'}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick="Edit.trip(${itin.id})">✏️ Edit Trip</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.3)" onclick="Print.show(${itin.id})">🖨️ Print / PDF</button>
+          <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="Edit.delete_trip(${itin.id})">🗑 Delete Trip</button>
+        </div>
       </div>
       <div class="tabs">
         ${visibleTabs.map(([key,label,cnt])=>`
@@ -984,9 +1040,10 @@ const Views = {
   },
 
   _flights(itin) {
-    if (!itin.flights.length) return `<div class="empty-state"><div class="icon">✈️</div><p>No flights recorded for this trip.</p></div>`;
-    return itin.flights.map(f => {
-      const segs = f.segments.map(s => `
+    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_flight(${itin.id})">+ Add Flight Booking</button>`;
+    if (!itin.flights.length) return addBtn + `<div class="empty-state"><div class="icon">✈️</div><p>No flights recorded for this trip.</p></div>`;
+    return addBtn + itin.flights.map(f => {
+      const segs = f.segments.map((s,si) => `
         <div class="flight-seg">
           <div class="airline-badge">${h(s.airline||'?')}<br><small style="font-weight:400">${h(s.flightNo||'')}</small></div>
           <div class="route">
@@ -1006,6 +1063,10 @@ const Views = {
             ${s.seatNo ? `<strong>Seat ${h(s.seatNo)}</strong>` : ''}
             <span>${h(s.class||'')}</span>
           </div>
+          <div class="component-actions">
+            <button class="btn-edit" onclick="Edit.edit_segment(${itin.id},${f.id},${si})">Edit</button>
+            <button class="btn-del" onclick="Edit.delete_segment(${itin.id},${f.id},${si})">Del</button>
+          </div>
         </div>`).join('');
       return `
         <div class="flight-booking">
@@ -1014,17 +1075,27 @@ const Views = {
               ${f.confirmationNo ? `<div class="conf">Conf# ${h(f.confirmationNo)}</div>` : ''}
               <div class="meta">${f.bookedThrough ? `Booked via ${h(f.bookedThrough)}` : ''} ${f.dateBooked ? '· ' + fmt_date(f.dateBooked) : ''}</div>
             </div>
-            <div>${f.price ? `<div class="price">${fmt_money(f.price)}</div>` : ''}${f.howPaid ? `<div class="meta">${h(f.howPaid)}</div>` : ''}</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div>${f.price ? `<div class="price">${fmt_money(f.price)}</div>` : ''}${f.howPaid ? `<div class="meta">${h(f.howPaid)}</div>` : ''}</div>
+              <div class="component-actions">
+                <button class="btn-edit" onclick="Edit.edit_flight(${itin.id},${f.id})">Edit</button>
+                <button class="btn-del" onclick="Edit.delete_flight(${itin.id},${f.id})">Del</button>
+              </div>
+            </div>
           </div>
           <div class="flight-segments">${segs}</div>
+          <div style="padding:8px 18px 14px">
+            <button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_segment(${itin.id},${f.id})">+ Add Segment</button>
+          </div>
           ${f.comments ? `<div style="padding:0 18px 14px"><div class="comments-block">${h(f.comments)}</div></div>` : ''}
         </div>`;
     }).join('');
   },
 
   _hotels(itin) {
-    if (!itin.hotels.length) return `<div class="empty-state"><div class="icon">🏨</div><p>No hotels recorded for this trip.</p></div>`;
-    return itin.hotels.map(ho => {
+    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_hotel(${itin.id})">+ Add Hotel</button>`;
+    if (!itin.hotels.length) return addBtn + `<div class="empty-state"><div class="icon">🏨</div><p>No hotels recorded for this trip.</p></div>`;
+    return addBtn + itin.hotels.map((ho, idx) => {
       const nights = ho.checkIn && ho.checkOut
         ? Math.round((new Date(ho.checkOut) - new Date(ho.checkIn)) / 86400000) : null;
       return `
@@ -1034,7 +1105,13 @@ const Views = {
               <div class="name">${h(ho.hotelName)}</div>
               ${ho.hotelCity ? `<div style="font-size:12px;color:#065f46;margin-top:2px">📍 ${h(ho.hotelCity)}${ho.hotelState?', '+ho.hotelState:''}</div>` : ''}
             </div>
-            <div>${ho.price ? `<div class="price">${fmt_money(ho.price)}${ho.pricePer?'/'+ho.pricePer:''}</div>` : ''}</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div>${ho.price ? `<div class="price">${fmt_money(ho.price)}${ho.pricePer?'/'+ho.pricePer:''}</div>` : ''}</div>
+              <div class="component-actions">
+                <button class="btn-edit" onclick="Edit.edit_hotel(${itin.id},${idx})">Edit</button>
+                <button class="btn-del" onclick="Edit.delete_hotel(${itin.id},${idx})">Del</button>
+              </div>
+            </div>
           </div>
           <div class="hotel-card-body">
             <div class="info-row">
@@ -1058,15 +1135,22 @@ const Views = {
   },
 
   _cars(itin) {
-    if (!itin.rentalCars.length) return `<div class="empty-state"><div class="icon">🚗</div><p>No car rentals recorded for this trip.</p></div>`;
-    return itin.rentalCars.map(c => `
+    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_car(${itin.id})">+ Add Car Rental</button>`;
+    if (!itin.rentalCars.length) return addBtn + `<div class="empty-state"><div class="icon">🚗</div><p>No car rentals recorded for this trip.</p></div>`;
+    return addBtn + itin.rentalCars.map((c, idx) => `
       <div class="car-card">
         <div class="car-card-header">
           <div>
             <div class="company">${h(c.company||'Car Rental')}</div>
             ${c.carType ? `<div style="font-size:12px;color:#92400e;margin-top:2px">${h(c.carType)}</div>` : ''}
           </div>
-          <div>${c.priceQuoted ? `<div class="price">${fmt_money(c.priceQuoted)}${c.pricePer?'/'+c.pricePer:''}</div>` : ''}</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div>${c.priceQuoted ? `<div class="price">${fmt_money(c.priceQuoted)}${c.pricePer?'/'+c.pricePer:''}</div>` : ''}</div>
+            <div class="component-actions">
+              <button class="btn-edit" onclick="Edit.edit_car(${itin.id},${idx})">Edit</button>
+              <button class="btn-del" onclick="Edit.delete_car(${itin.id},${idx})">Del</button>
+            </div>
+          </div>
         </div>
         <div class="car-card-body">
           <div class="info-row">
@@ -1087,8 +1171,9 @@ const Views = {
   },
 
   _cruises(itin) {
-    if (!itin.cruises.length) return `<div class="empty-state"><div class="icon">⛴️</div><p>No cruises recorded for this trip.</p></div>`;
-    return itin.cruises.map(c => {
+    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_cruise(${itin.id})">+ Add Cruise</button>`;
+    if (!itin.cruises.length) return addBtn + `<div class="empty-state"><div class="icon">⛴️</div><p>No cruises recorded for this trip.</p></div>`;
+    return addBtn + itin.cruises.map((c, idx) => {
       const perksHtml = c.perks?.length ? `
         <div class="perks-list">
           <div class="perk-title">Perks & Extras</div>
@@ -1101,7 +1186,13 @@ const Views = {
               <div class="ship">${h(c.shipName||'Cruise')}</div>
               ${c.noOfNights ? `<div style="font-size:13px;color:#5b21b6;margin-top:3px">${c.noOfNights} nights</div>` : ''}
             </div>
-            <div>${c.totalPrice ? `<div class="price">${fmt_money(c.totalPrice)} total</div>` : (c.price?`<div class="price">${fmt_money(c.price)}/pp</div>`:'')}</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div>${c.totalPrice ? `<div class="price">${fmt_money(c.totalPrice)} total</div>` : (c.price?`<div class="price">${fmt_money(c.price)}/pp</div>`:'')}</div>
+              <div class="component-actions">
+                <button class="btn-edit" onclick="Edit.edit_cruise(${itin.id},${idx})">Edit</button>
+                <button class="btn-del" onclick="Edit.delete_cruise(${itin.id},${idx})">Del</button>
+              </div>
+            </div>
           </div>
           <div class="cruise-card-body">
             <div class="cruise-route">
@@ -1133,10 +1224,11 @@ const Views = {
   },
 
   _activities(itin) {
-    if (!itin.activities.length) return `<div class="empty-state"><div class="icon">🎯</div><p>No activities recorded for this trip.</p></div>`;
+    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_activity(${itin.id})">+ Add Activity</button>`;
+    if (!itin.activities.length) return addBtn + `<div class="empty-state"><div class="icon">🎯</div><p>No activities recorded for this trip.</p></div>`;
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return `<div class="activity-list">
-      ${itin.activities.map(a => {
+    return addBtn + `<div class="activity-list">
+      ${itin.activities.map((a, idx) => {
         let dateBox = '<div class="date-box"><div class="month">—</div><div class="day">?</div></div>';
         if (a.date) {
           const [,m,d] = a.date.split('-');
@@ -1151,6 +1243,10 @@ const Views = {
             ${a.comments ? `<div class="note">${h(a.comments)}</div>` : ''}
           </div>
           <div class="price-box">${a.price ? fmt_money(a.price) : ''}</div>
+          <div class="component-actions" style="flex-direction:column">
+            <button class="btn-edit" onclick="Edit.edit_activity(${itin.id},${idx})">Edit</button>
+            <button class="btn-del" onclick="Edit.delete_activity(${itin.id},${idx})">Del</button>
+          </div>
         </div>`;
       }).join('')}
     </div>`;
@@ -1185,8 +1281,16 @@ const Views = {
   },
 
   _notes(itin) {
-    if (!itin.notes.length) return `<div class="empty-state"><div class="icon">📝</div><p>No notes for this trip.</p></div>`;
-    return itin.notes.map(n => `<div class="note-item">${h(n.note)}</div>`).join('');
+    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_note(${itin.id})">+ Add Note</button>`;
+    if (!itin.notes.length) return addBtn + `<div class="empty-state"><div class="icon">📝</div><p>No notes for this trip.</p></div>`;
+    return addBtn + itin.notes.map((n, idx) => `
+      <div style="position:relative;margin-bottom:10px">
+        <div class="note-item">${h(n.note)}</div>
+        <div class="component-actions" style="position:absolute;top:10px;right:10px">
+          <button class="btn-edit" onclick="Edit.edit_note(${itin.id},${idx})">Edit</button>
+          <button class="btn-del" onclick="Edit.delete_note(${itin.id},${idx})">Del</button>
+        </div>
+      </div>`).join('');
   },
 
   // ── Travellers ──────────────────────────────────────────────
@@ -1457,6 +1561,864 @@ const App = {
     $('#sidebar').classList.toggle('open');
     $('#sidebar-overlay').classList.toggle('show');
   }
+};
+
+// ══════════════════════════════════════════════════════════════
+//  MODAL
+// ══════════════════════════════════════════════════════════════
+const Modal = {
+  show(title, bodyHTML, saveLabel, onSave) {
+    $('#modal-title').textContent = title;
+    $('#modal-body').innerHTML = bodyHTML;
+    $('#modal-actions').innerHTML = `
+      <button class="btn btn-secondary" onclick="Modal.hide()">Cancel</button>
+      <button class="btn btn-primary" onclick="Modal._save()">${saveLabel||'Save'}</button>`;
+    Modal._onSave = onSave;
+    $('#modal-overlay').classList.remove('hidden');
+  },
+  hide() { $('#modal-overlay').classList.add('hidden'); },
+  _onSave: null,
+  _save() { if (Modal._onSave) Modal._onSave(); }
+};
+document.addEventListener('keydown', e => { if(e.key==='Escape') Modal.hide(); });
+$('#modal-overlay').addEventListener('click', e => { if(e.target===e.currentTarget) Modal.hide(); });
+
+// ══════════════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════════════
+function gv(id) { return ($(id)||{}).value||''; }
+function gvn(id) { const v=gv(id); return v===''?null:Number(v); }
+function find_itin(id) { return State.data.itineraries.find(i=>i.id===id); }
+function ref_opts(list, valKey, labelKey) {
+  return list.map(x=>`<option value="${h(x[valKey]||x)}">${h(x[labelKey]||x[valKey]||x)}</option>`).join('');
+}
+function how_paid_opts() {
+  const opts = State.data.reference.howPaid||[];
+  return opts.map(o=>`<option value="${h(o)}">${h(o)}</option>`).join('');
+}
+function price_per_opts() {
+  return ['Day','Night','Week','Trip','Person'].map(o=>`<option value="${o}">${o}</option>`).join('');
+}
+function sel(id, val) {
+  const el = $(id); if(!el||val==null) return;
+  [...el.options].forEach(o=>{ o.selected = o.value===String(val); });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FORMS  (return HTML strings)
+// ══════════════════════════════════════════════════════════════
+const Forms = {
+  trip(itin) {
+    const tv = State.data.travellers;
+    return `
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Trip Title / Purpose</label>
+          <input id="f-title" type="text" value="${h(itin.title||'')}">
+        </div>
+        <div class="form-group">
+          <label>Start Date</label>
+          <input id="f-start" type="date" value="${itin.startDate||''}">
+        </div>
+        <div class="form-group">
+          <label>End Date</label>
+          <input id="f-end" type="date" value="${itin.endDate||''}">
+        </div>
+        <div class="form-group">
+          <label>Departing From</label>
+          <input id="f-from" type="text" value="${h(itin.startDestination||'')}">
+        </div>
+        <div class="form-group">
+          <label>Destination</label>
+          <input id="f-to" type="text" value="${h(itin.endDestination||'')}">
+        </div>
+        <div class="form-group full">
+          <label>Traveller</label>
+          <select id="f-traveller">
+            <option value="">— Select —</option>
+            ${tv.map(t=>`<option value="${t.id}" ${t.id===itin.travellerId?'selected':''}>${h(t.firstName)} ${h(t.lastName)}</option>`).join('')}
+          </select>
+        </div>
+      </div>`;
+  },
+
+  flight(f) {
+    return `
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Confirmation #</label>
+          <input id="f-conf" type="text" value="${h(f.confirmationNo||'')}">
+        </div>
+        <div class="form-group">
+          <label>Price</label>
+          <input id="f-price" type="number" step="0.01" value="${f.price!=null?f.price:''}">
+        </div>
+        <div class="form-group">
+          <label>How Paid</label>
+          <input id="f-howpaid" type="text" list="howpaid-list" value="${h(f.howPaid||'')}">
+          <datalist id="howpaid-list">${how_paid_opts()}</datalist>
+        </div>
+        <div class="form-group">
+          <label>Date Booked</label>
+          <input id="f-datebooked" type="date" value="${f.dateBooked||''}">
+        </div>
+        <div class="form-group full">
+          <label>Booked Through</label>
+          <input id="f-bookedthrough" type="text" value="${h(f.bookedThrough||'')}">
+        </div>
+        <div class="form-group full">
+          <label>Comments</label>
+          <textarea id="f-comments">${h(f.comments||'')}</textarea>
+        </div>
+      </div>`;
+  },
+
+  segment(s) {
+    return `
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Airline</label>
+          <input id="fs-airline" type="text" value="${h(s.airline||'')}">
+        </div>
+        <div class="form-group">
+          <label>Flight #</label>
+          <input id="fs-flightno" type="text" value="${h(s.flightNo||'')}">
+        </div>
+        <div class="form-group">
+          <label>Depart Date</label>
+          <input id="fs-ddate" type="date" value="${s.departDate||''}">
+        </div>
+        <div class="form-group">
+          <label>Depart City</label>
+          <input id="fs-dcity" type="text" value="${h(s.departCity||'')}">
+        </div>
+        <div class="form-group">
+          <label>Depart Time</label>
+          <input id="fs-dtime" type="time" value="${s.departTime||''}">
+        </div>
+        <div class="form-group">
+          <label>Class</label>
+          <select id="fs-class">
+            ${['Coach','Business','First','Premium Economy'].map(c=>`<option value="${c}" ${s.class===c?'selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Arrive Date</label>
+          <input id="fs-adate" type="date" value="${s.arriveDate||''}">
+        </div>
+        <div class="form-group">
+          <label>Arrive City</label>
+          <input id="fs-acity" type="text" value="${h(s.arriveCity||'')}">
+        </div>
+        <div class="form-group">
+          <label>Arrive Time</label>
+          <input id="fs-atime" type="time" value="${s.arriveTime||''}">
+        </div>
+        <div class="form-group">
+          <label>Seat #</label>
+          <input id="fs-seat" type="text" value="${h(s.seatNo||'')}">
+        </div>
+      </div>`;
+  },
+
+  hotel(ho) {
+    return `
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Hotel Name</label>
+          <input id="f-name" type="text" value="${h(ho.hotelName||'')}">
+        </div>
+        <div class="form-group">
+          <label>City</label>
+          <input id="f-city" type="text" value="${h(ho.hotelCity||'')}">
+        </div>
+        <div class="form-group">
+          <label>State</label>
+          <input id="f-state" type="text" value="${h(ho.hotelState||'')}">
+        </div>
+        <div class="form-group full">
+          <label>Address</label>
+          <input id="f-addr" type="text" value="${h(ho.hotelAddress||'')}">
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input id="f-phone" type="text" value="${h(ho.hotelPhone||'')}">
+        </div>
+        <div class="form-group">
+          <label>Confirmation #</label>
+          <input id="f-conf" type="text" value="${h(ho.confirmationNo||'')}">
+        </div>
+        <div class="form-group">
+          <label>Check-in</label>
+          <input id="f-checkin" type="date" value="${ho.checkIn||''}">
+        </div>
+        <div class="form-group">
+          <label>Check-out</label>
+          <input id="f-checkout" type="date" value="${ho.checkOut||''}">
+        </div>
+        <div class="form-group">
+          <label>Room Type</label>
+          <input id="f-roomtype" type="text" value="${h(ho.roomType||'')}">
+        </div>
+        <div class="form-group">
+          <label>Price</label>
+          <input id="f-price" type="number" step="0.01" value="${ho.price!=null?ho.price:''}">
+        </div>
+        <div class="form-group">
+          <label>Price Per</label>
+          <select id="f-priceper">${price_per_opts()}</select>
+        </div>
+        <div class="form-group">
+          <label>Date Booked</label>
+          <input id="f-datebooked" type="date" value="${ho.dateBooked||''}">
+        </div>
+        <div class="form-group full">
+          <label>Booked Through</label>
+          <input id="f-bookedthrough" type="text" value="${h(ho.bookedThrough||'')}">
+        </div>
+        <div class="form-group full">
+          <label>Comments</label>
+          <textarea id="f-comments">${h(ho.comments||'')}</textarea>
+        </div>
+      </div>`;
+  },
+
+  car(c) {
+    const cos = State.data.reference.carRentalCos||[];
+    return `
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Rental Company</label>
+          <input id="f-company" type="text" list="co-list" value="${h(c.company||'')}">
+          <datalist id="co-list">${cos.map(x=>`<option value="${h(x.name||'')}">`).join('')}</datalist>
+        </div>
+        <div class="form-group">
+          <label>Car Type</label>
+          <input id="f-cartype" type="text" value="${h(c.carType||'')}">
+        </div>
+        <div class="form-group">
+          <label>Confirmation #</label>
+          <input id="f-conf" type="text" value="${h(c.confirmationNo||'')}">
+        </div>
+        <div class="form-group">
+          <label>Price Quoted</label>
+          <input id="f-price" type="number" step="0.01" value="${c.priceQuoted!=null?c.priceQuoted:''}">
+        </div>
+        <div class="form-group">
+          <label>Price Per</label>
+          <select id="f-priceper">${price_per_opts()}</select>
+        </div>
+        <div class="form-group">
+          <label>Date Booked</label>
+          <input id="f-datebooked" type="date" value="${c.dateBooked||''}">
+        </div>
+        <div class="form-group">
+          <label>Pick-up Date</label>
+          <input id="f-pudate" type="date" value="${c.pickupDate||''}">
+        </div>
+        <div class="form-group">
+          <label>Pick-up Time</label>
+          <input id="f-putime" type="time" value="${c.pickupTime||''}">
+        </div>
+        <div class="form-group">
+          <label>Drop-off Date</label>
+          <input id="f-dodate" type="date" value="${c.dropOffDate||''}">
+        </div>
+        <div class="form-group">
+          <label>Drop-off Time</label>
+          <input id="f-dotime" type="time" value="${c.dropOffTime||''}">
+        </div>
+        <div class="form-group full">
+          <label>Booked Through</label>
+          <input id="f-bookedthrough" type="text" value="${h(c.bookedThrough||'')}">
+        </div>
+        <div class="form-group full">
+          <label>Comments</label>
+          <textarea id="f-comments">${h(c.comments||'')}</textarea>
+        </div>
+      </div>`;
+  },
+
+  cruise(c) {
+    return `
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Ship Name</label>
+          <input id="f-ship" type="text" value="${h(c.shipName||'')}">
+        </div>
+        <div class="form-group">
+          <label>Reservation #</label>
+          <input id="f-conf" type="text" value="${h(c.reservationNo||'')}">
+        </div>
+        <div class="form-group">
+          <label># of Nights</label>
+          <input id="f-nights" type="number" value="${c.noOfNights||''}">
+        </div>
+        <div class="form-group">
+          <label>Sailing Date</label>
+          <input id="f-saildate" type="date" value="${c.sailingDate||''}">
+        </div>
+        <div class="form-group">
+          <label>Depart Time</label>
+          <input id="f-dtime" type="time" value="${c.departTime||''}">
+        </div>
+        <div class="form-group full">
+          <label>Departure Port</label>
+          <input id="f-dport" type="text" value="${h(c.departPort||'')}">
+        </div>
+        <div class="form-group">
+          <label>Arrival Date</label>
+          <input id="f-adate" type="date" value="${c.arrivalDate||''}">
+        </div>
+        <div class="form-group full">
+          <label>Arrival Port</label>
+          <input id="f-aport" type="text" value="${h(c.arrivePort||'')}">
+        </div>
+        <div class="form-group">
+          <label>Cabin Type</label>
+          <input id="f-cabintype" type="text" value="${h(c.roomType||'')}">
+        </div>
+        <div class="form-group">
+          <label>Cabin #</label>
+          <input id="f-cabinno" type="text" value="${h(c.stateRoomNo||'')}">
+        </div>
+        <div class="form-group">
+          <label>Deck #</label>
+          <input id="f-deck" type="text" value="${h(c.deckNumber!=null?String(c.deckNumber):'')}">
+        </div>
+        <div class="form-group">
+          <label>Dining Time</label>
+          <input id="f-dining" type="time" value="${c.diningTime||''}">
+        </div>
+        <div class="form-group">
+          <label>Price Per Person</label>
+          <input id="f-price" type="number" step="0.01" value="${c.price!=null?c.price:''}">
+        </div>
+        <div class="form-group">
+          <label>Total Price</label>
+          <input id="f-totalprice" type="number" step="0.01" value="${c.totalPrice!=null?c.totalPrice:''}">
+        </div>
+        <div class="form-group">
+          <label>Guest 1</label>
+          <input id="f-g1" type="text" value="${h(c.guest1||'')}">
+        </div>
+        <div class="form-group">
+          <label>Guest 2</label>
+          <input id="f-g2" type="text" value="${h(c.guest2||'')}">
+        </div>
+        <div class="form-group full">
+          <label>Booked Through</label>
+          <input id="f-bookedthrough" type="text" value="${h(c.bookedThrough||'')}">
+        </div>
+        <div class="form-group full">
+          <label>Comments</label>
+          <textarea id="f-comments">${h(c.comments||'')}</textarea>
+        </div>
+      </div>`;
+  },
+
+  activity(a) {
+    return `
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Activity</label>
+          <input id="f-activity" type="text" value="${h(a.activity||'')}">
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input id="f-date" type="date" value="${a.date||''}">
+        </div>
+        <div class="form-group">
+          <label>Time</label>
+          <input id="f-time" type="time" value="${a.time||''}">
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input id="f-location" type="text" value="${h(a.location||'')}">
+        </div>
+        <div class="form-group">
+          <label>Price</label>
+          <input id="f-price" type="number" step="0.01" value="${a.price!=null?a.price:''}">
+        </div>
+        <div class="form-group full">
+          <label>Comments / Notes</label>
+          <textarea id="f-comments">${h(a.comments||'')}</textarea>
+        </div>
+      </div>`;
+  },
+
+  note(n) {
+    return `
+      <div class="form-group">
+        <label>Note</label>
+        <textarea id="f-note" style="min-height:140px">${h(n.note||'')}</textarea>
+      </div>`;
+  },
+};
+
+// ══════════════════════════════════════════════════════════════
+//  EDIT / DELETE ACTIONS
+// ══════════════════════════════════════════════════════════════
+const Edit = {
+  // ── Trip basics ─────────────────────────────────────────────
+  trip(id) {
+    const itin = find_itin(id);
+    Modal.show('Edit Trip', Forms.trip(itin), 'Save', () => {
+      itin.title            = gv('#f-title')||itin.title;
+      itin.startDate        = gv('#f-start')||null;
+      itin.endDate          = gv('#f-end')||null;
+      itin.startDestination = gv('#f-from')||null;
+      itin.endDestination   = gv('#f-to')||null;
+      itin.travellerId      = gv('#f-traveller')?parseInt(gv('#f-traveller')):itin.travellerId;
+      Modal.hide(); App.render(); App.saveData();
+    });
+  },
+
+  delete_trip(id) {
+    const itin = find_itin(id);
+    if (!confirm(`Delete "${itin.title}"? This cannot be undone.`)) return;
+    State.data.itineraries = State.data.itineraries.filter(i=>i.id!==id);
+    Router.go('trips'); App.saveData();
+  },
+
+  // ── Flights ─────────────────────────────────────────────────
+  add_flight(itinId) {
+    const blank = {id:Date.now(),confirmationNo:'',price:null,howPaid:'',dateBooked:'',bookedThrough:'',comments:'',segments:[]};
+    Modal.show('Add Flight Booking', Forms.flight(blank), 'Add', () => {
+      blank.confirmationNo = gv('#f-conf');
+      blank.price          = gvn('#f-price');
+      blank.howPaid        = gv('#f-howpaid');
+      blank.dateBooked     = gv('#f-datebooked')||null;
+      blank.bookedThrough  = gv('#f-bookedthrough');
+      blank.comments       = gv('#f-comments');
+      blank.itineraryId    = itinId;
+      find_itin(itinId).flights.push(blank);
+      Modal.hide(); State.tripTab='flights'; App.render(); App.saveData();
+    });
+  },
+
+  edit_flight(itinId, flightId) {
+    const itin = find_itin(itinId);
+    const f = itin.flights.find(x=>x.id===flightId);
+    Modal.show('Edit Flight Booking', Forms.flight(f), 'Save', () => {
+      f.confirmationNo = gv('#f-conf');
+      f.price          = gvn('#f-price');
+      f.howPaid        = gv('#f-howpaid');
+      f.dateBooked     = gv('#f-datebooked')||null;
+      f.bookedThrough  = gv('#f-bookedthrough');
+      f.comments       = gv('#f-comments');
+      Modal.hide(); App.render(); App.saveData();
+    });
+  },
+
+  delete_flight(itinId, flightId) {
+    if (!confirm('Delete this flight booking and all its segments?')) return;
+    const itin = find_itin(itinId);
+    itin.flights = itin.flights.filter(f=>f.id!==flightId);
+    App.render(); App.saveData();
+  },
+
+  add_segment(itinId, flightId) {
+    const blank = {airline:'',flightNo:'',departDate:'',departCity:'',departTime:'',class:'Coach',arriveDate:'',arriveCity:'',arriveTime:'',seatNo:''};
+    Modal.show('Add Flight Segment', Forms.segment(blank), 'Add', () => {
+      blank.airline    = gv('#fs-airline');
+      blank.flightNo   = gv('#fs-flightno');
+      blank.departDate = gv('#fs-ddate')||null;
+      blank.departCity = gv('#fs-dcity');
+      blank.departTime = gv('#fs-dtime')||null;
+      blank.class      = gv('#fs-class');
+      blank.arriveDate = gv('#fs-adate')||null;
+      blank.arriveCity = gv('#fs-acity');
+      blank.arriveTime = gv('#fs-atime')||null;
+      blank.seatNo     = gv('#fs-seat');
+      find_itin(itinId).flights.find(f=>f.id===flightId).segments.push(blank);
+      Modal.hide(); App.render(); App.saveData();
+    });
+  },
+
+  edit_segment(itinId, flightId, segIdx) {
+    const f = find_itin(itinId).flights.find(x=>x.id===flightId);
+    const s = f.segments[segIdx];
+    Modal.show('Edit Flight Segment', Forms.segment(s), 'Save', () => {
+      s.airline    = gv('#fs-airline');
+      s.flightNo   = gv('#fs-flightno');
+      s.departDate = gv('#fs-ddate')||null;
+      s.departCity = gv('#fs-dcity');
+      s.departTime = gv('#fs-dtime')||null;
+      s.class      = gv('#fs-class');
+      s.arriveDate = gv('#fs-adate')||null;
+      s.arriveCity = gv('#fs-acity');
+      s.arriveTime = gv('#fs-atime')||null;
+      s.seatNo     = gv('#fs-seat');
+      Modal.hide(); App.render(); App.saveData();
+    });
+  },
+
+  delete_segment(itinId, flightId, segIdx) {
+    if (!confirm('Delete this flight segment?')) return;
+    const f = find_itin(itinId).flights.find(x=>x.id===flightId);
+    f.segments.splice(segIdx,1);
+    App.render(); App.saveData();
+  },
+
+  // ── Hotels ──────────────────────────────────────────────────
+  add_hotel(itinId) {
+    const blank = {hotelName:'',hotelCity:'',hotelState:'',hotelAddress:'',hotelPhone:'',checkIn:'',checkOut:'',confirmationNo:'',roomType:'',price:null,pricePer:'Night',dateBooked:'',bookedThrough:'',comments:''};
+    Modal.show('Add Hotel', Forms.hotel(blank), 'Add', () => {
+      Edit._read_hotel(blank);
+      find_itin(itinId).hotels.push(blank);
+      Modal.hide(); State.tripTab='hotels'; App.render(); App.saveData();
+    });
+  },
+
+  edit_hotel(itinId, idx) {
+    const ho = find_itin(itinId).hotels[idx];
+    Modal.show('Edit Hotel', Forms.hotel(ho), 'Save', () => {
+      Edit._read_hotel(ho);
+      Modal.hide(); App.render(); App.saveData();
+    });
+    sel('#f-priceper', ho.pricePer);
+  },
+
+  _read_hotel(ho) {
+    ho.hotelName     = gv('#f-name');
+    ho.hotelCity     = gv('#f-city');
+    ho.hotelState    = gv('#f-state');
+    ho.hotelAddress  = gv('#f-addr');
+    ho.hotelPhone    = gv('#f-phone');
+    ho.confirmationNo= gv('#f-conf');
+    ho.checkIn       = gv('#f-checkin')||null;
+    ho.checkOut      = gv('#f-checkout')||null;
+    ho.roomType      = gv('#f-roomtype');
+    ho.price         = gvn('#f-price');
+    ho.pricePer      = gv('#f-priceper');
+    ho.dateBooked    = gv('#f-datebooked')||null;
+    ho.bookedThrough = gv('#f-bookedthrough');
+    ho.comments      = gv('#f-comments');
+  },
+
+  delete_hotel(itinId, idx) {
+    if (!confirm('Delete this hotel stay?')) return;
+    find_itin(itinId).hotels.splice(idx,1);
+    App.render(); App.saveData();
+  },
+
+  // ── Cars ────────────────────────────────────────────────────
+  add_car(itinId) {
+    const blank = {company:'',carType:'',confirmationNo:'',priceQuoted:null,pricePer:'Day',dateBooked:'',pickupDate:'',pickupTime:'',dropOffDate:'',dropOffTime:'',bookedThrough:'',comments:''};
+    Modal.show('Add Car Rental', Forms.car(blank), 'Add', () => {
+      Edit._read_car(blank);
+      find_itin(itinId).rentalCars.push(blank);
+      Modal.hide(); State.tripTab='cars'; App.render(); App.saveData();
+    });
+  },
+
+  edit_car(itinId, idx) {
+    const c = find_itin(itinId).rentalCars[idx];
+    Modal.show('Edit Car Rental', Forms.car(c), 'Save', () => {
+      Edit._read_car(c); Modal.hide(); App.render(); App.saveData();
+    });
+    sel('#f-priceper', c.pricePer);
+  },
+
+  _read_car(c) {
+    c.company      = gv('#f-company');
+    c.carType      = gv('#f-cartype');
+    c.confirmationNo=gv('#f-conf');
+    c.priceQuoted  = gvn('#f-price');
+    c.pricePer     = gv('#f-priceper');
+    c.dateBooked   = gv('#f-datebooked')||null;
+    c.pickupDate   = gv('#f-pudate')||null;
+    c.pickupTime   = gv('#f-putime')||null;
+    c.dropOffDate  = gv('#f-dodate')||null;
+    c.dropOffTime  = gv('#f-dotime')||null;
+    c.bookedThrough= gv('#f-bookedthrough');
+    c.comments     = gv('#f-comments');
+  },
+
+  delete_car(itinId, idx) {
+    if (!confirm('Delete this car rental?')) return;
+    find_itin(itinId).rentalCars.splice(idx,1);
+    App.render(); App.saveData();
+  },
+
+  // ── Cruises ─────────────────────────────────────────────────
+  add_cruise(itinId) {
+    const blank = {id:Date.now(),shipName:'',sailingDate:'',departTime:'',departPort:'',arrivalDate:'',arrivalTime:'',arrivePort:'',reservationNo:'',roomType:'',stateRoomNo:'',deckNumber:'',noOfNights:'',diningTime:'',guest1:'',guest2:'',price:null,totalPrice:null,bookedThrough:'',comments:'',perks:[]};
+    Modal.show('Add Cruise', Forms.cruise(blank), 'Add', () => {
+      Edit._read_cruise(blank);
+      find_itin(itinId).cruises.push(blank);
+      Modal.hide(); State.tripTab='cruises'; App.render(); App.saveData();
+    });
+  },
+
+  edit_cruise(itinId, idx) {
+    const c = find_itin(itinId).cruises[idx];
+    Modal.show('Edit Cruise', Forms.cruise(c), 'Save', () => {
+      Edit._read_cruise(c); Modal.hide(); App.render(); App.saveData();
+    });
+  },
+
+  _read_cruise(c) {
+    c.shipName     = gv('#f-ship');
+    c.reservationNo= gv('#f-conf');
+    c.noOfNights   = gvn('#f-nights');
+    c.sailingDate  = gv('#f-saildate')||null;
+    c.departTime   = gv('#f-dtime')||null;
+    c.departPort   = gv('#f-dport');
+    c.arrivalDate  = gv('#f-adate')||null;
+    c.arrivePort   = gv('#f-aport');
+    c.roomType     = gv('#f-cabintype');
+    c.stateRoomNo  = gv('#f-cabinno');
+    c.deckNumber   = gv('#f-deck');
+    c.diningTime   = gv('#f-dining')||null;
+    c.price        = gvn('#f-price');
+    c.totalPrice   = gvn('#f-totalprice');
+    c.guest1       = gv('#f-g1');
+    c.guest2       = gv('#f-g2');
+    c.bookedThrough= gv('#f-bookedthrough');
+    c.comments     = gv('#f-comments');
+  },
+
+  delete_cruise(itinId, idx) {
+    if (!confirm('Delete this cruise?')) return;
+    find_itin(itinId).cruises.splice(idx,1);
+    App.render(); App.saveData();
+  },
+
+  // ── Activities ──────────────────────────────────────────────
+  add_activity(itinId) {
+    const blank = {activity:'',date:'',time:'',location:'',price:null,comments:''};
+    Modal.show('Add Activity', Forms.activity(blank), 'Add', () => {
+      Edit._read_activity(blank);
+      find_itin(itinId).activities.push(blank);
+      find_itin(itinId).activities.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+      Modal.hide(); State.tripTab='activities'; App.render(); App.saveData();
+    });
+  },
+
+  edit_activity(itinId, idx) {
+    const a = find_itin(itinId).activities[idx];
+    Modal.show('Edit Activity', Forms.activity(a), 'Save', () => {
+      Edit._read_activity(a);
+      find_itin(itinId).activities.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+      Modal.hide(); App.render(); App.saveData();
+    });
+  },
+
+  _read_activity(a) {
+    a.activity = gv('#f-activity');
+    a.date     = gv('#f-date')||null;
+    a.time     = gv('#f-time')||null;
+    a.location = gv('#f-location');
+    a.price    = gvn('#f-price');
+    a.comments = gv('#f-comments');
+  },
+
+  delete_activity(itinId, idx) {
+    if (!confirm('Delete this activity?')) return;
+    find_itin(itinId).activities.splice(idx,1);
+    App.render(); App.saveData();
+  },
+
+  // ── Notes ───────────────────────────────────────────────────
+  add_note(itinId) {
+    const blank = {id:Date.now(), note:''};
+    Modal.show('Add Note', Forms.note(blank), 'Add', () => {
+      blank.note = gv('#f-note');
+      if (!blank.note.trim()) { Modal.hide(); return; }
+      find_itin(itinId).notes.push(blank);
+      Modal.hide(); State.tripTab='notes'; App.render(); App.saveData();
+    });
+  },
+
+  edit_note(itinId, idx) {
+    const n = find_itin(itinId).notes[idx];
+    Modal.show('Edit Note', Forms.note(n), 'Save', () => {
+      n.note = gv('#f-note');
+      Modal.hide(); App.render(); App.saveData();
+    });
+  },
+
+  delete_note(itinId, idx) {
+    if (!confirm('Delete this note?')) return;
+    find_itin(itinId).notes.splice(idx,1);
+    App.render(); App.saveData();
+  },
+};
+
+// ══════════════════════════════════════════════════════════════
+//  PRINT
+// ══════════════════════════════════════════════════════════════
+const Print = {
+  show(id) {
+    const itin = find_itin(id);
+    const win = window.open('', '_blank');
+    win.document.write(Print._html(itin));
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 400);
+  },
+
+  _html(itin) {
+    const dur = itin.startDate && itin.endDate
+      ? `${fmt_date(itin.startDate)} – ${fmt_date(itin.endDate)}`
+      : fmt_date(itin.startDate);
+    const dest = itin.startDestination && itin.endDestination && itin.startDestination !== itin.endDestination
+      ? `${itin.startDestination} → ${itin.endDestination}`
+      : (itin.startDestination || itin.endDestination || '');
+
+    const sections = [];
+
+    // Flights
+    if (itin.flights.length) {
+      const rows = itin.flights.map(f => {
+        const segs = f.segments.map(s =>
+          `<tr style="border-bottom:1px solid #e2e8f0">
+            <td style="padding:8px 10px">${h(s.airline||'')} ${h(s.flightNo||'')}</td>
+            <td style="padding:8px 10px">${h(s.departCity||'')} → ${h(s.arriveCity||'')}</td>
+            <td style="padding:8px 10px">${fmt_date_short(s.departDate)}${s.departTime?' '+fmt_time(s.departTime):''}</td>
+            <td style="padding:8px 10px">${s.arriveTime?fmt_time(s.arriveTime):''}</td>
+            <td style="padding:8px 10px">${h(s.class||'')}${s.seatNo?' · Seat '+h(s.seatNo):''}</td>
+          </tr>`).join('');
+        return `<div style="margin-bottom:12px;font-size:13px">
+          ${f.confirmationNo?`<strong>Conf# ${h(f.confirmationNo)}</strong> · `:''}
+          ${f.bookedThrough?`Booked via ${h(f.bookedThrough)} `:''}
+          ${f.price?`· ${fmt_money(f.price)}`:''}
+          ${f.howPaid?` (${h(f.howPaid)})`:''}
+          <table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:13px">
+            <thead><tr style="background:#f1f5f9">
+              <th style="padding:6px 10px;text-align:left">Flight</th>
+              <th style="padding:6px 10px;text-align:left">Route</th>
+              <th style="padding:6px 10px;text-align:left">Departs</th>
+              <th style="padding:6px 10px;text-align:left">Arrives</th>
+              <th style="padding:6px 10px;text-align:left">Class / Seat</th>
+            </tr></thead>
+            <tbody>${segs}</tbody>
+          </table>
+          ${f.comments?`<div style="margin-top:6px;font-size:12px;color:#64748b;font-style:italic">${h(f.comments)}</div>`:''}
+        </div>`;
+      }).join('');
+      sections.push(Print._section('✈ Flights', rows));
+    }
+
+    // Hotels
+    if (itin.hotels.length) {
+      const rows = itin.hotels.map(ho => {
+        const nights = ho.checkIn && ho.checkOut
+          ? Math.round((new Date(ho.checkOut)-new Date(ho.checkIn))/86400000) : null;
+        return `<div style="margin-bottom:12px;padding:10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px">
+          <strong style="font-size:14px">${h(ho.hotelName)}</strong>
+          ${ho.hotelCity?` · ${h(ho.hotelCity)}${ho.hotelState?', '+ho.hotelState:''}`:''}<br>
+          <span style="color:#64748b">
+            Check-in: ${fmt_date(ho.checkIn)} &nbsp;|&nbsp; Check-out: ${fmt_date(ho.checkOut)}${nights?` (${nights} nights)`:''}
+            ${ho.roomType?` &nbsp;|&nbsp; ${h(ho.roomType)}`:''}
+            ${ho.confirmationNo?` &nbsp;|&nbsp; Conf# <strong>${h(ho.confirmationNo)}</strong>`:''}
+            ${ho.price?` &nbsp;|&nbsp; ${fmt_money(ho.price)}${ho.pricePer?'/'+ho.pricePer:''}`:''}<br>
+            ${ho.hotelPhone?`Phone: ${h(ho.hotelPhone)} &nbsp;`:''}
+            ${ho.hotelAddress?`Address: ${h(ho.hotelAddress)}`:''}
+          </span>
+          ${ho.comments?`<div style="margin-top:6px;font-size:12px;color:#64748b;font-style:italic">${h(ho.comments)}</div>`:''}
+        </div>`;
+      }).join('');
+      sections.push(Print._section('🏨 Hotels', rows));
+    }
+
+    // Cars
+    if (itin.rentalCars.length) {
+      const rows = itin.rentalCars.map(c =>
+        `<div style="margin-bottom:12px;padding:10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px">
+          <strong style="font-size:14px">${h(c.company||'Car Rental')}</strong>${c.carType?` · ${h(c.carType)}`:''}<br>
+          <span style="color:#64748b">
+            Pick-up: ${fmt_date(c.pickupDate)}${c.pickupTime?' at '+fmt_time(c.pickupTime):''} &nbsp;|&nbsp;
+            Drop-off: ${fmt_date(c.dropOffDate)}${c.dropOffTime?' at '+fmt_time(c.dropOffTime):''}
+            ${c.confirmationNo?` &nbsp;|&nbsp; Conf# <strong>${h(c.confirmationNo)}</strong>`:''}
+            ${c.priceQuoted?` &nbsp;|&nbsp; ${fmt_money(c.priceQuoted)}${c.pricePer?'/'+c.pricePer:''}`:''}<br>
+            ${c.bookedThrough?`Booked via ${h(c.bookedThrough)}`:''}
+          </span>
+          ${c.comments?`<div style="margin-top:6px;font-size:12px;color:#64748b;font-style:italic">${h(c.comments)}</div>`:''}
+        </div>`).join('');
+      sections.push(Print._section('🚗 Car Rentals', rows));
+    }
+
+    // Cruises
+    if (itin.cruises.length) {
+      const rows = itin.cruises.map(c =>
+        `<div style="margin-bottom:12px;padding:10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px">
+          <strong style="font-size:15px">${h(c.shipName||'Cruise')}</strong>${c.noOfNights?` · ${c.noOfNights} nights`:''}<br>
+          <span style="color:#64748b">
+            ${fmt_date(c.sailingDate)}${c.departTime?' at '+fmt_time(c.departTime):''} from ${h(c.departPort||'')}
+            ${c.arrivalDate?` → ${fmt_date(c.arrivalDate)} at ${h(c.arrivePort||'')}`:''}<br>
+            ${c.roomType?`Cabin: ${h(c.roomType)}`:''}${c.stateRoomNo?' #'+h(c.stateRoomNo):''}${c.deckNumber?' · Deck '+h(String(c.deckNumber)):''}
+            ${c.reservationNo?` &nbsp;|&nbsp; Reservation# <strong>${h(c.reservationNo)}</strong>`:''}
+            ${c.diningTime?` &nbsp;|&nbsp; Dining: ${fmt_time(c.diningTime)}`:''}<br>
+            ${c.guest1?`Guests: ${h(c.guest1)}${c.guest2?', '+h(c.guest2):''}`:''}<br>
+            ${c.totalPrice?`Total: ${fmt_money(c.totalPrice)}`:(c.price?`${fmt_money(c.price)}/pp`:'')}
+          </span>
+          ${c.comments?`<div style="margin-top:6px;font-size:12px;color:#64748b;font-style:italic">${h(c.comments)}</div>`:''}
+          ${c.perks&&c.perks.length?`<div style="margin-top:8px;font-size:12px"><strong>Perks:</strong> ${c.perks.map(p=>h(p.perk||'')).join(', ')}</div>`:''}
+        </div>`).join('');
+      sections.push(Print._section('⛴ Cruise', rows));
+    }
+
+    // Activities
+    if (itin.activities.length) {
+      const rows = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:#f1f5f9">
+          <th style="padding:6px 10px;text-align:left">Date</th>
+          <th style="padding:6px 10px;text-align:left">Activity</th>
+          <th style="padding:6px 10px;text-align:left">Location</th>
+          <th style="padding:6px 10px;text-align:left">Time</th>
+          <th style="padding:6px 10px;text-align:right">Price</th>
+        </tr></thead>
+        <tbody>${itin.activities.map(a=>`
+          <tr style="border-bottom:1px solid #e2e8f0">
+            <td style="padding:7px 10px">${fmt_date_short(a.date)}</td>
+            <td style="padding:7px 10px"><strong>${h(a.activity||'')}</strong>${a.comments?`<br><span style="color:#64748b;font-size:12px">${h(a.comments)}</span>`:''}</td>
+            <td style="padding:7px 10px;color:#64748b">${h(a.location||'')}</td>
+            <td style="padding:7px 10px;color:#64748b">${a.time?fmt_time(a.time):''}</td>
+            <td style="padding:7px 10px;text-align:right">${a.price?fmt_money(a.price):''}</td>
+          </tr>`).join('')}
+        </tbody></table>`;
+      sections.push(Print._section('🎯 Activities', rows));
+    }
+
+    // Notes
+    if (itin.notes.length) {
+      const rows = itin.notes.map(n =>
+        `<div style="background:#fffbeb;border:1px solid #fef08a;border-radius:6px;padding:12px;margin-bottom:10px;font-size:13px;line-height:1.6;white-space:pre-wrap">${h(n.note)}</div>`
+      ).join('');
+      sections.push(Print._section('📝 Notes', rows));
+    }
+
+    return `<!DOCTYPE html><html><head>
+      <meta charset="UTF-8">
+      <title>${h(itin.title)}</title>
+      <style>
+        body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:#1e293b; margin:0; padding:0; }
+        .header { background:#1e3a5f; color:white; padding:24px 32px; }
+        .header h1 { font-size:22px; font-weight:800; margin:0 0 6px; }
+        .header .meta { font-size:14px; opacity:.85; }
+        .body { padding:24px 32px; }
+        .section { margin-bottom:24px; page-break-inside:avoid; }
+        .section-title { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#64748b; border-bottom:2px solid #e2e8f0; padding-bottom:6px; margin-bottom:12px; }
+        table { border-collapse:collapse; }
+        @media print { body { font-size:12px; } .header { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+      </style>
+    </head><body>
+      <div class="header">
+        <h1>${h(itin.title)}</h1>
+        <div class="meta">
+          📅 ${dur}${dest?' &nbsp;·&nbsp; 📍 '+h(dest):''}
+        </div>
+      </div>
+      <div class="body">${sections.join('')}</div>
+    </body></html>`;
+  },
+
+  _section(title, content) {
+    return `<div class="section"><div class="section-title">${title}</div>${content}</div>`;
+  },
 };
 
 // Start the app
