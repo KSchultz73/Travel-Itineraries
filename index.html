@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travel Itineraries</title>
+  <style>
+    /* ── Reset & Variables ─────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy:   #1e3a5f;
+      --blue:   #2563eb;
+      --sky:    #3b82f6;
+      --amber:  #f59e0b;
+      --green:  #10b981;
+      --purple: #7c3aed;
+      --pink:   #db2777;
+      --red:    #ef4444;
+      --bg:     #f0f4f8;
+      --card:   #ffffff;
+      --border: #e2e8f0;
+      --text:   #1e293b;
+      --muted:  #64748b;
+      --light:  #94a3b8;
+      --sidebar-w: 230px;
+      --header-h: 56px;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.05);
+      --shadow-lg: 0 4px 24px rgba(0,0,0,.12);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; border: none; background: none; font-family: inherit; }
+    input, select, textarea { font-family: inherit; }
+
+    /* ── Utility ───────────────────────────────────────── */
+    .hidden { display: none !important; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .4px;
+    }
+    .badge-flight  { background: #dbeafe; color: #1d4ed8; }
+    .badge-hotel   { background: #d1fae5; color: #065f46; }
+    .badge-car     { background: #fef3c7; color: #92400e; }
+    .badge-cruise  { background: #ede9fe; color: #5b21b6; }
+    .badge-activity{ background: #fce7f3; color: #9d174d; }
+    .badge-transfer{ background: #f1f5f9; color: #475569; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500;
+      background: var(--bg); color: var(--muted); border: 1px solid var(--border);
+    }
+    .chip.has-data { background: #eff6ff; color: var(--blue); border-color: #bfdbfe; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500;
+      transition: all .15s;
+    }
+    .btn-primary { background: var(--blue); color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--bg); }
+    .btn-danger { background: #fef2f2; color: var(--red); border: 1px solid #fecaca; }
+    .btn-danger:hover { background: #fee2e2; }
+    .btn-sm { padding: 5px 12px; font-size: 13px; }
+    .card {
+      background: var(--card); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 20px;
+    }
+    .section-title {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--muted); margin-bottom: 14px;
+    }
+    .empty-state {
+      text-align: center; padding: 48px 24px; color: var(--muted);
+    }
+    .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state p { font-size: 15px; }
+
+    /* ── Setup / Auth Screens ──────────────────────────── */
+    #screen-setup, #screen-loading {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+    }
+    .setup-box {
+      background: white; border-radius: 16px; padding: 40px;
+      max-width: 480px; width: 90%; box-shadow: var(--shadow-lg);
+    }
+    .setup-box .logo {
+      font-size: 32px; margin-bottom: 8px; text-align: center;
+    }
+    .setup-box h1 {
+      font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 6px;
+    }
+    .setup-box .subtitle {
+      font-size: 14px; color: var(--muted); text-align: center; margin-bottom: 28px;
+    }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 14px; transition: border-color .15s;
+      background: white;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+    }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-group .hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
+    .redirect-uri-box {
+      background: #f8fafc; border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 12px; font-size: 13px; font-family: monospace; color: var(--navy);
+      word-break: break-all; margin-top: 6px;
+    }
+    .step-list { list-style: none; counter-reset: steps; }
+    .step-list li {
+      counter-increment: steps; padding: 10px 0 10px 36px; position: relative;
+      font-size: 14px; border-bottom: 1px solid var(--border);
+    }
+    .step-list li:last-child { border-bottom: none; }
+    .step-list li::before {
+      content: counter(steps); position: absolute; left: 0;
+      width: 24px; height: 24px; background: var(--blue); color: white;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; top: 10px;
+    }
+    .step-list li a { color: var(--blue); text-decoration: underline; }
+    .alert {
+      padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 16px;
+    }
+    .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+    .spinner {
+      width: 40px; height: 40px; border: 3px solid rgba(255,255,255,.3);
+      border-top-color: white; border-radius: 50%;
+      animation: spin .8s linear infinite; margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: white; font-size: 16px; text-align: center; }
+
+    /* ── App Shell ─────────────────────────────────────── */
+    #screen-app { display: flex; min-height: 100vh; }
+
+    /* Sidebar */
+    #sidebar {
+      width: var(--sidebar-w); background: var(--navy); color: white;
+      display: flex; flex-direction: column; position: fixed; top: 0; left: 0;
+      height: 100vh; z-index: 100; transition: transform .25s;
+    }
+    .sidebar-header {
+      padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+    .sidebar-logo { font-size: 20px; font-weight: 800; letter-spacing: -.3px; }
+    .sidebar-logo span { color: var(--amber); }
+    .sidebar-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 2px; }
+    nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 18px; font-size: 14px; font-weight: 500;
+      color: rgba(255,255,255,.75); border-radius: 0; cursor: pointer;
+      transition: all .15s; border: none; width: 100%; text-align: left;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.08); color: white; }
+    .nav-item.active { background: rgba(255,255,255,.12); color: white; }
+    .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+    .nav-section {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .8px; color: rgba(255,255,255,.35);
+      padding: 14px 18px 4px;
+    }
+    .sidebar-footer {
+      padding: 14px 18px; border-top: 1px solid rgba(255,255,255,.1);
+    }
+    .sidebar-footer .save-btn {
+      width: 100%; display: flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 9px; background: var(--amber); color: #78350f;
+      border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;
+      transition: background .15s; border: none;
+    }
+    .sidebar-footer .save-btn:hover { background: #fbbf24; }
+    .sidebar-footer .save-status { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 8px; text-align: center; }
+    .mobile-menu-btn {
+      display: none; position: fixed; top: 12px; left: 12px; z-index: 200;
+      background: var(--navy); color: white; border-radius: 8px;
+      padding: 8px 10px; font-size: 18px; border: none; cursor: pointer;
+    }
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4);
+      z-index: 99;
+    }
+
+    /* Main area */
+    #main-area {
+      flex: 1; margin-left: var(--sidebar-w); min-width: 0;
+      display: flex; flex-direction: column;
+    }
+    #topbar {
+      height: var(--header-h); background: var(--card); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 24px; gap: 16px; position: sticky;
+      top: 0; z-index: 50;
+    }
+    #topbar-title { font-size: 16px; font-weight: 700; flex: 1; }
+    #topbar-actions { display: flex; gap: 8px; }
+    #content { flex: 1; padding: 24px; max-width: 1100px; width: 100%; margin: 0 auto; }
+
+    /* ── Dashboard ─────────────────────────────────────── */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--card); border-radius: var(--radius); padding: 18px 20px;
+      box-shadow: var(--shadow);
+    }
+    .stat-card .label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    .stat-card .value { font-size: 28px; font-weight: 800; color: var(--text); margin-top: 4px; }
+    .stat-card .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .stat-card.accent-blue .value { color: var(--blue); }
+    .stat-card.accent-green .value { color: var(--green); }
+    .stat-card.accent-amber .value { color: var(--amber); }
+    .stat-card.accent-purple .value { color: var(--purple); }
+
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .section-header h2 { font-size: 16px; font-weight: 700; }
+    .trips-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+
+    /* Trip card */
+    .trip-card {
+      background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: 18px 20px; cursor: pointer; transition: transform .15s, box-shadow .15s;
+      border: 2px solid transparent;
+    }
+    .trip-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .trip-card.upcoming { border-color: var(--blue); }
+    .trip-card .tc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .trip-card .tc-title { font-size: 15px; font-weight: 700; color: var(--text); flex: 1; line-height: 1.3; }
+    .trip-card .tc-year { font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; margin-left: 8px; }
+    .trip-card .tc-dates { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    .trip-card .tc-dest { font-size: 13px; color: var(--blue); font-weight: 500; margin-bottom: 12px; }
+    .trip-card .tc-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+
+    /* ── Trip List ─────────────────────────────────────── */
+    .search-bar {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+    }
+    .search-bar input {
+      flex: 1; padding: 10px 14px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 14px; background: var(--card);
+    }
+    .search-bar input:focus { outline: none; border-color: var(--blue); }
+    .search-bar select {
+      padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 14px; background: var(--card);
+    }
+    .trips-table { width: 100%; border-collapse: collapse; }
+    .trips-table th, .trips-table td { padding: 12px 14px; text-align: left; }
+    .trips-table th { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); border-bottom: 2px solid var(--border); }
+    .trips-table td { border-bottom: 1px solid var(--border); font-size: 14px; }
+    .trips-table tr { cursor: pointer; transition: background .1s; }
+    .trips-table tr:hover td { background: #f8fafc; }
+    .trips-table .tt-title { font-weight: 600; color: var(--text); }
+    .trips-table .tt-dest { color: var(--muted); font-size: 13px; }
+
+    /* ── Trip Detail ───────────────────────────────────── */
+    .trip-hero {
+      background: linear-gradient(135deg, var(--navy) 0%, #2563eb 100%);
+      color: white; border-radius: var(--radius); padding: 28px 30px;
+      margin-bottom: 24px; position: relative; overflow: hidden;
+    }
+    .trip-hero::before {
+      content: '✈'; position: absolute; right: 24px; top: 50%;
+      transform: translateY(-50%); font-size: 80px; opacity: .07;
+    }
+    .trip-hero h1 { font-size: 22px; font-weight: 800; margin-bottom: 6px; line-height: 1.3; }
+    .trip-hero .meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px; opacity: .85; margin-bottom: 16px; }
+    .trip-hero .meta span { display: flex; align-items: center; gap: 5px; }
+    .trip-hero .component-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+    .trip-hero .component-badges .badge { font-size: 12px; padding: 4px 10px; }
+
+    .tabs { display: flex; gap: 2px; background: var(--card); border-radius: var(--radius); padding: 4px; box-shadow: var(--shadow); margin-bottom: 20px; flex-wrap: wrap; }
+    .tab-btn {
+      padding: 8px 16px; border-radius: 7px; font-size: 13px; font-weight: 600;
+      color: var(--muted); transition: all .15s; cursor: pointer; border: none;
+      background: none; display: flex; align-items: center; gap: 5px;
+    }
+    .tab-btn:hover { background: var(--bg); color: var(--text); }
+    .tab-btn.active { background: var(--navy); color: white; }
+    .tab-btn .count {
+      background: rgba(255,255,255,.2); padding: 1px 6px; border-radius: 10px;
+      font-size: 11px;
+    }
+    .tab-btn:not(.active) .count { background: var(--border); color: var(--muted); }
+
+    /* Flight display */
+    .flight-booking {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; margin-bottom: 16px; background: var(--card); box-shadow: var(--shadow);
+    }
+    .flight-booking-header {
+      background: #eff6ff; padding: 12px 18px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .flight-booking-header .conf { font-size: 13px; font-weight: 700; color: var(--blue); }
+    .flight-booking-header .price { font-size: 15px; font-weight: 800; color: var(--text); }
+    .flight-booking-header .meta { font-size: 12px; color: var(--muted); }
+    .flight-segments { padding: 0; }
+    .flight-seg {
+      display: flex; align-items: center; padding: 14px 18px; gap: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .flight-seg:last-child { border-bottom: none; }
+    .flight-seg .airline-badge {
+      background: var(--navy); color: white; padding: 4px 10px; border-radius: 6px;
+      font-size: 12px; font-weight: 700; white-space: nowrap; min-width: 90px; text-align: center;
+    }
+    .flight-seg .route { flex: 1; }
+    .flight-seg .route .cities {
+      font-size: 18px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 8px;
+    }
+    .flight-seg .route .cities .arrow { color: var(--muted); font-size: 14px; }
+    .flight-seg .route .times { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .flight-seg .seat-class { text-align: right; font-size: 13px; color: var(--muted); }
+    .flight-seg .seat-class strong { display: block; color: var(--text); font-size: 14px; }
+
+    /* Hotel display */
+    .hotel-card {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; margin-bottom: 16px; background: var(--card); box-shadow: var(--shadow);
+    }
+    .hotel-card-header {
+      background: #d1fae5; padding: 12px 18px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .hotel-card-header .name { font-size: 16px; font-weight: 700; color: #064e3b; }
+    .hotel-card-header .price { font-size: 14px; font-weight: 700; color: #065f46; }
+    .hotel-card-body { padding: 14px 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .hotel-card-body .info-row { font-size: 14px; }
+    .hotel-card-body .info-row .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: .4px; }
+    .hotel-card-body .info-row .val { color: var(--text); margin-top: 1px; }
+    .hotel-card-body .full-row { grid-column: 1/-1; }
+
+    /* Car display */
+    .car-card {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; margin-bottom: 16px; background: var(--card); box-shadow: var(--shadow);
+    }
+    .car-card-header {
+      background: #fef3c7; padding: 12px 18px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .car-card-header .company { font-size: 16px; font-weight: 700; color: #78350f; }
+    .car-card-header .price { font-size: 14px; font-weight: 700; color: #92400e; }
+    .car-card-body { padding: 14px 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .car-card-body .info-row { font-size: 14px; }
+    .car-card-body .info-row .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: .4px; }
+    .car-card-body .info-row .val { color: var(--text); margin-top: 1px; }
+    .car-card-body .full-row { grid-column: 1/-1; }
+
+    /* Cruise display */
+    .cruise-card {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; margin-bottom: 16px; background: var(--card); box-shadow: var(--shadow);
+    }
+    .cruise-card-header {
+      background: #ede9fe; padding: 14px 18px;
+      display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;
+    }
+    .cruise-card-header .ship { font-size: 18px; font-weight: 800; color: #4c1d95; }
+    .cruise-card-header .price { font-size: 15px; font-weight: 700; color: #5b21b6; }
+    .cruise-card-body { padding: 16px 18px; }
+    .cruise-route {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+      background: #f5f3ff; padding: 14px 16px; border-radius: 8px;
+    }
+    .cruise-route .port { text-align: center; }
+    .cruise-route .port .city { font-size: 14px; font-weight: 700; }
+    .cruise-route .port .date { font-size: 12px; color: var(--muted); }
+    .cruise-route .arrow { flex: 1; text-align: center; font-size: 24px; color: var(--purple); }
+    .cruise-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+    .cruise-info-grid .info-item .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: .4px; }
+    .cruise-info-grid .info-item .val { font-size: 14px; color: var(--text); margin-top: 2px; }
+    .perks-list { background: #f5f3ff; border-radius: 8px; padding: 12px 14px; }
+    .perks-list .perk-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--purple); margin-bottom: 8px; }
+    .perks-list .perk-item { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
+
+    /* Activities */
+    .activity-list { display: flex; flex-direction: column; gap: 10px; }
+    .activity-item {
+      display: flex; gap: 14px; padding: 14px 16px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow);
+    }
+    .activity-item .date-box {
+      background: #fce7f3; border-radius: 8px; padding: 6px 10px;
+      text-align: center; min-width: 52px;
+    }
+    .activity-item .date-box .month { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #9d174d; }
+    .activity-item .date-box .day { font-size: 20px; font-weight: 800; color: #831843; line-height: 1; }
+    .activity-item .details { flex: 1; }
+    .activity-item .details .name { font-size: 14px; font-weight: 700; }
+    .activity-item .details .loc { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .activity-item .details .note { font-size: 13px; color: var(--muted); margin-top: 4px; font-style: italic; }
+    .activity-item .price-box { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; }
+
+    /* Notes */
+    .note-item {
+      background: #fffbeb; border: 1px solid #fef08a; border-radius: 8px;
+      padding: 14px 16px; font-size: 14px; line-height: 1.6; white-space: pre-wrap;
+      margin-bottom: 10px;
+    }
+
+    /* Ground transfers */
+    .transfer-card {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; margin-bottom: 16px; background: var(--card); box-shadow: var(--shadow);
+    }
+    .transfer-card-header { background: #f1f5f9; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; }
+    .transfer-card-header .name { font-size: 15px; font-weight: 700; }
+    .transfer-card-body { padding: 14px 18px; }
+
+    /* Comments block */
+    .comments-block {
+      background: #f8fafc; border-left: 3px solid var(--border);
+      padding: 10px 14px; border-radius: 0 6px 6px 0; margin-top: 10px;
+      font-size: 13px; color: var(--muted); line-height: 1.5; white-space: pre-wrap;
+    }
+
+    /* ── Add/Edit Form ──────────────────────────────────── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-grid .full { grid-column: 1/-1; }
+    .form-section {
+      background: var(--card); border-radius: var(--radius); padding: 20px;
+      box-shadow: var(--shadow); margin-bottom: 20px;
+    }
+    .form-section h3 { font-size: 15px; font-weight: 700; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+
+    /* ── Modal ─────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 300;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal {
+      background: var(--card); border-radius: 14px; padding: 28px;
+      max-width: 500px; width: 100%; box-shadow: var(--shadow-lg);
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+
+    /* ── Responsive ────────────────────────────────────── */
+    @media (max-width: 768px) {
+      #sidebar { transform: translateX(-100%); }
+      #sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.show { display: block; }
+      .mobile-menu-btn { display: block; }
+      #main-area { margin-left: 0; }
+      #topbar { padding-left: 56px; }
+      #content { padding: 16px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .trips-grid { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .full { grid-column: 1; }
+      .hotel-card-body, .car-card-body { grid-template-columns: 1fr; }
+      .cruise-info-grid { grid-template-columns: 1fr 1fr; }
+      .flight-seg { flex-wrap: wrap; }
+    }
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Loading ──────────────────────────────────────── -->
+<div id="screen-loading" class="hidden">
+  <div style="text-align:center">
+    <div class="spinner"></div>
+    <p class="loading-text" id="loading-msg">Loading your travel data…</p>
+  </div>
+</div>
+
+<!-- ── Setup ────────────────────────────────────────── -->
+<div id="screen-setup">
+  <div class="setup-box">
+    <div class="logo">✈️</div>
+    <h1>Travel Itineraries</h1>
+    <p class="subtitle">Your private travel history, accessible anywhere</p>
+
+    <div id="setup-error" class="alert alert-error hidden"></div>
+
+    <div id="setup-step1">
+      <div class="alert alert-info" style="margin-bottom:20px">
+        This app stores your data in your own Dropbox. You'll need a free Dropbox Developer App key (one-time setup).
+      </div>
+      <p style="font-size:14px;font-weight:600;margin-bottom:10px">First-time setup steps:</p>
+      <ol class="step-list" style="margin-bottom:20px">
+        <li>Go to <a href="https://www.dropbox.com/developers/apps" target="_blank">dropbox.com/developers/apps</a> and click <strong>Create app</strong></li>
+        <li>Choose <strong>Scoped access</strong> → <strong>App folder</strong> → name it (e.g. <em>TravelApp</em>)</li>
+        <li>In the app's <strong>Permissions</strong> tab, check <strong>files.content.read</strong> and <strong>files.content.write</strong>, then click Save</li>
+        <li>In the <strong>Settings</strong> tab, add this exact URL to <strong>Redirect URIs</strong>:<br>
+          <div class="redirect-uri-box" id="redirect-uri-display">Loading…</div>
+        </li>
+        <li>Copy your <strong>App key</strong> and paste it below</li>
+      </ol>
+
+      <div class="form-group">
+        <label>Dropbox App Key</label>
+        <input type="text" id="app-key-input" placeholder="e.g. abc123xyz" autocomplete="off" spellcheck="false">
+        <p class="hint">Found in your Dropbox App Console under Settings → App key</p>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="App.startAuth()">
+        Connect to Dropbox →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Mobile menu button ────────────────────────────── -->
+<button class="mobile-menu-btn" onclick="App.toggleSidebar()">☰</button>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="App.toggleSidebar()"></div>
+
+<!-- ── Main App ──────────────────────────────────────── -->
+<div id="screen-app" class="hidden">
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">✈ Travel<span>Book</span></div>
+      <div class="sidebar-sub">Your private itineraries</div>
+    </div>
+    <nav id="sidebar-nav">
+      <button class="nav-item active" onclick="Router.go('dashboard')" data-view="dashboard">
+        <span class="icon">🏠</span> Dashboard
+      </button>
+      <button class="nav-item" onclick="Router.go('trips')" data-view="trips">
+        <span class="icon">📋</span> All Trips
+      </button>
+      <button class="nav-item" onclick="Router.go('add')" data-view="add">
+        <span class="icon">➕</span> Add Trip
+      </button>
+      <div class="nav-section">Reference</div>
+      <button class="nav-item" onclick="Router.go('travellers')" data-view="travellers">
+        <span class="icon">👤</span> Travellers
+      </button>
+      <button class="nav-item" onclick="Router.go('airlines')" data-view="airlines">
+        <span class="icon">🛫</span> Airlines
+      </button>
+      <button class="nav-item" onclick="Router.go('hotels_ref')" data-view="hotels_ref">
+        <span class="icon">🏨</span> Hotels
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="save-btn" onclick="App.saveData()">
+        <span>💾</span> Save to Dropbox
+      </button>
+      <div class="save-status" id="save-status">Auto-saves on changes</div>
+    </div>
+  </div>
+
+  <div id="main-area">
+    <div id="topbar">
+      <div id="topbar-title">Dashboard</div>
+      <div id="topbar-actions"></div>
+    </div>
+    <div id="content"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════════════════════
+const REDIRECT_URI = window.location.origin + window.location.pathname.replace(/\/$/, '') + '/';
+const DATA_FILE    = '/travel-data.json';
+
+// ══════════════════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════════════════
+const $ = (sel, ctx) => (ctx||document).querySelector(sel);
+const $$ = (sel, ctx) => [...(ctx||document).querySelectorAll(sel)];
+
+function fmt_date(s) {
+  if (!s) return '—';
+  const [y,m,d] = s.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${months[+m-1]} ${+d}, ${y}`;
+}
+function fmt_date_short(s) {
+  if (!s) return '—';
+  const [y,m,d] = s.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${months[+m-1]} ${+d}`;
+}
+function fmt_money(v) {
+  if (v == null || v === '') return '';
+  return '$' + Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function fmt_time(s) {
+  if (!s) return '';
+  // Convert 24h HH:MM to 12h
+  const [h, min] = s.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hh = h % 12 || 12;
+  return `${hh}:${String(min).padStart(2,'0')} ${ampm}`;
+}
+function is_future(s) {
+  if (!s) return false;
+  return s >= new Date().toISOString().slice(0,10);
+}
+function days_until(s) {
+  if (!s) return null;
+  const diff = new Date(s) - new Date();
+  return Math.ceil(diff / 86400000);
+}
+function html_escape(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function h(s) { return html_escape(s); }
+
+// Base64url encoding
+function b64url(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PKCE AUTH
+// ══════════════════════════════════════════════════════════════
+const Auth = {
+  async generateVerifier() {
+    const arr = new Uint8Array(32);
+    crypto.getRandomValues(arr);
+    return b64url(arr);
+  },
+  async generateChallenge(verifier) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+    return b64url(buf);
+  },
+  async startPKCE(appKey) {
+    const verifier = await this.generateVerifier();
+    const challenge = await this.generateChallenge(verifier);
+    localStorage.setItem('pkce_verifier', verifier);
+    localStorage.setItem('dropbox_app_key', appKey);
+    const params = new URLSearchParams({
+      client_id: appKey,
+      response_type: 'code',
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+      redirect_uri: REDIRECT_URI,
+      token_access_type: 'offline',
+    });
+    window.location.href = 'https://www.dropbox.com/oauth2/authorize?' + params;
+  },
+  async handleCallback(code) {
+    const verifier = localStorage.getItem('pkce_verifier');
+    const appKey   = localStorage.getItem('dropbox_app_key');
+    if (!verifier || !appKey) return null;
+    const r = await fetch('https://api.dropboxapi.com/oauth2/token', {
+      method: 'POST',
+      headers: {'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({
+        code, grant_type:'authorization_code',
+        code_verifier: verifier,
+        redirect_uri: REDIRECT_URI,
+        client_id: appKey,
+      })
+    });
+    if (!r.ok) { const e = await r.text(); console.error(e); return null; }
+    const data = await r.json();
+    localStorage.setItem('access_token',  data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token || '');
+    localStorage.setItem('token_expiry',  Date.now() + (data.expires_in||14400)*1000);
+    localStorage.removeItem('pkce_verifier');
+    return data.access_token;
+  },
+  async getToken() {
+    const appKey   = localStorage.getItem('dropbox_app_key');
+    const expiry   = Number(localStorage.getItem('token_expiry') || 0);
+    const access   = localStorage.getItem('access_token');
+    const refresh  = localStorage.getItem('refresh_token');
+    if (access && Date.now() < expiry - 60000) return access;
+    if (!refresh || !appKey) return null;
+    // Refresh
+    const r = await fetch('https://api.dropboxapi.com/oauth2/token', {
+      method: 'POST',
+      headers: {'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({
+        grant_type:'refresh_token', refresh_token: refresh, client_id: appKey
+      })
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('token_expiry', Date.now() + (data.expires_in||14400)*1000);
+    return data.access_token;
+  },
+  isConnected() {
+    return !!(localStorage.getItem('access_token') && localStorage.getItem('dropbox_app_key'));
+  },
+  logout() {
+    ['access_token','refresh_token','token_expiry','dropbox_app_key','pkce_verifier']
+      .forEach(k => localStorage.removeItem(k));
+  }
+};
+
+// ══════════════════════════════════════════════════════════════
+//  DROPBOX DATA
+// ══════════════════════════════════════════════════════════════
+const DB = {
+  async load() {
+    const token = await Auth.getToken();
+    if (!token) return null;
+    const r = await fetch('https://content.dropboxapi.com/2/files/download', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Dropbox-API-Arg': JSON.stringify({path: DATA_FILE}),
+      }
+    });
+    if (r.status === 409) return null; // file not found
+    if (!r.ok) throw new Error('Dropbox load failed: ' + r.status);
+    return r.json();
+  },
+  async save(data) {
+    const token = await Auth.getToken();
+    if (!token) throw new Error('Not authenticated');
+    data.lastModified = new Date().toISOString();
+    const r = await fetch('https://content.dropboxapi.com/2/files/upload', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/octet-stream',
+        'Dropbox-API-Arg': JSON.stringify({path: DATA_FILE, mode:'overwrite', autorename:false}),
+      },
+      body: JSON.stringify(data, null, 2)
+    });
+    if (!r.ok) throw new Error('Dropbox save failed: ' + r.status);
+    return r.json();
+  }
+};
+
+// ══════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════
+let State = {
+  data: null,
+  view: 'dashboard',
+  tripId: null,
+  tripTab: 'flights',
+  searchQ: '',
+  searchYear: '',
+  dirty: false,
+};
+
+// ══════════════════════════════════════════════════════════════
+//  ROUTER
+// ══════════════════════════════════════════════════════════════
+const Router = {
+  go(view, params = {}) {
+    State.view = view;
+    if (params.id !== undefined) State.tripId = params.id;
+    if (params.tab) State.tripTab = params.tab;
+    App.render();
+    // Update sidebar active state
+    $$('#sidebar-nav .nav-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.view === view);
+    });
+  }
+};
+
+// ══════════════════════════════════════════════════════════════
+//  VIEWS
+// ══════════════════════════════════════════════════════════════
+const Views = {
+
+  // ── Dashboard ──────────────────────────────────────────────
+  dashboard() {
+    const d = State.data;
+    const today = new Date().toISOString().slice(0,10);
+    const upcoming = d.itineraries.filter(i => (i.endDate||'') >= today).sort((a,b)=>(a.startDate||'').localeCompare(b.startDate||''));
+    const recent   = d.itineraries.filter(i => (i.endDate||'') < today).slice(0,6);
+
+    const totalFlights  = d.itineraries.reduce((s,i)=>s+i.flights.length,0);
+    const totalHotels   = d.itineraries.reduce((s,i)=>s+i.hotels.length,0);
+    const totalCars     = d.itineraries.reduce((s,i)=>s+i.rentalCars.length,0);
+    const totalCruises  = d.itineraries.reduce((s,i)=>s+i.cruises.length,0);
+
+    let html = `
+      <div class="stats-grid">
+        <div class="stat-card accent-blue">
+          <div class="label">Total Trips</div>
+          <div class="value">${d.itineraries.length}</div>
+          <div class="sub">since ${d.itineraries.slice(-1)[0]?.startDate?.slice(0,4)||'?'}</div>
+        </div>
+        <div class="stat-card accent-green">
+          <div class="label">Upcoming</div>
+          <div class="value">${upcoming.length}</div>
+          <div class="sub">trip${upcoming.length!==1?'s':''} planned</div>
+        </div>
+        <div class="stat-card accent-amber">
+          <div class="label">Flights Taken</div>
+          <div class="value">${totalFlights}</div>
+          <div class="sub">${totalCruises} cruise${totalCruises!==1?'s':''}</div>
+        </div>
+        <div class="stat-card accent-purple">
+          <div class="label">Hotel Stays</div>
+          <div class="value">${totalHotels}</div>
+          <div class="sub">${totalCars} car rental${totalCars!==1?'s':''}</div>
+        </div>
+      </div>
+    `;
+
+    if (upcoming.length) {
+      html += `<div class="section-header"><h2>✈ Upcoming Trips</h2></div>
+               <div class="trips-grid" style="margin-bottom:28px">
+               ${upcoming.map(i => Views._trip_card(i, true)).join('')}
+               </div>`;
+    }
+
+    html += `<div class="section-header"><h2>🕐 Recent Trips</h2>
+               <button class="btn btn-secondary btn-sm" onclick="Router.go('trips')">View All</button>
+             </div>
+             <div class="trips-grid">
+             ${recent.map(i => Views._trip_card(i, false)).join('')}
+             </div>`;
+
+    return html;
+  },
+
+  _trip_card(itin, upcoming) {
+    const chips = [
+      itin.flights.length    ? `<span class="chip has-data">✈ ${itin.flights.length} flight${itin.flights.length>1?'s':''}</span>` : '',
+      itin.hotels.length     ? `<span class="chip has-data">🏨 ${itin.hotels.length} hotel${itin.hotels.length>1?'s':''}</span>` : '',
+      itin.rentalCars.length ? `<span class="chip has-data">🚗 ${itin.rentalCars.length} car${itin.rentalCars.length>1?'s':''}</span>` : '',
+      itin.cruises.length    ? `<span class="chip has-data">⛴ ${itin.cruises.length} cruise${itin.cruises.length>1?'s':''}</span>` : '',
+      itin.activities.length ? `<span class="chip has-data">🎯 ${itin.activities.length}</span>` : '',
+    ].filter(Boolean).join('');
+    const dur = itin.startDate && itin.endDate
+      ? `${fmt_date_short(itin.startDate)} – ${fmt_date_short(itin.endDate)}, ${itin.endDate.slice(0,4)}`
+      : (itin.startDate ? fmt_date(itin.startDate) : '');
+    const dest = (itin.startDestination||'') + (itin.endDestination && itin.endDestination !== itin.startDestination ? ' → ' + itin.endDestination : '');
+    const du = upcoming && itin.startDate ? days_until(itin.startDate) : null;
+    return `
+      <div class="trip-card ${upcoming?'upcoming':''}" onclick="Router.go('trip',{id:${itin.id}})">
+        <div class="tc-header">
+          <div class="tc-title">${h(itin.title)}</div>
+          ${du!=null && du >= 0 ? `<div class="tc-year" style="color:var(--blue)">In ${du}d</div>` : `<div class="tc-year">${itin.startDate?.slice(0,4)||''}</div>`}
+        </div>
+        <div class="tc-dates">${dur}</div>
+        ${dest ? `<div class="tc-dest">📍 ${h(dest)}</div>` : ''}
+        <div class="tc-chips">${chips}</div>
+      </div>`;
+  },
+
+  // ── Trip List ───────────────────────────────────────────────
+  trips() {
+    const q = State.searchQ.toLowerCase();
+    const y = State.searchYear;
+    const years = [...new Set(State.data.itineraries.map(i=>i.startDate?.slice(0,4)).filter(Boolean))].sort((a,b)=>b-a);
+    let list = State.data.itineraries.filter(i => {
+      if (y && i.startDate?.slice(0,4) !== y) return false;
+      if (q) {
+        const haystack = [i.title,i.startDestination,i.endDestination].join(' ').toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      return true;
+    });
+
+    return `
+      <div class="search-bar">
+        <input type="text" placeholder="Search trips…" value="${h(State.searchQ)}"
+          oninput="State.searchQ=this.value;App.render_content()">
+        <select onchange="State.searchYear=this.value;App.render_content()">
+          <option value="">All years</option>
+          ${years.map(y2=>`<option value="${y2}" ${y===y2?'selected':''}>${y2}</option>`).join('')}
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="Router.go('add')">+ Add Trip</button>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="trips-table">
+          <thead><tr>
+            <th>Trip</th><th>Dates</th><th>From → To</th><th>Components</th>
+          </tr></thead>
+          <tbody>
+          ${list.length ? list.map(i => {
+            const chips = [
+              i.flights.length    ? `<span class="badge badge-flight">✈ ${i.flights.length}</span>` : '',
+              i.hotels.length     ? `<span class="badge badge-hotel">🏨 ${i.hotels.length}</span>` : '',
+              i.rentalCars.length ? `<span class="badge badge-car">🚗 ${i.rentalCars.length}</span>` : '',
+              i.cruises.length    ? `<span class="badge badge-cruise">⛴ ${i.cruises.length}</span>` : '',
+            ].filter(Boolean).join(' ');
+            return `<tr onclick="Router.go('trip',{id:${i.id}})">
+              <td><div class="tt-title">${h(i.title)}</div></td>
+              <td style="white-space:nowrap;color:var(--muted);font-size:13px">${fmt_date_short(i.startDate)} – ${fmt_date_short(i.endDate)}</td>
+              <td><div class="tt-dest">${h((i.startDestination||'')+(i.endDestination&&i.endDestination!==i.startDestination?' → '+i.endDestination:''))}</div></td>
+              <td>${chips}</td>
+            </tr>`;
+          }).join('') : `<tr><td colspan="4"><div class="empty-state"><p>No trips match your search.</p></div></td></tr>`}
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:10px;text-align:right">${list.length} trip${list.length!==1?'s':''} shown</p>
+    `;
+  },
+
+  // ── Trip Detail ─────────────────────────────────────────────
+  trip(id) {
+    const itin = State.data.itineraries.find(i => i.id === id);
+    if (!itin) return `<div class="card"><p>Trip not found.</p></div>`;
+
+    const tab = State.tripTab;
+    const counts = {
+      flights:   itin.flights.length,
+      hotels:    itin.hotels.length,
+      cars:      itin.rentalCars.length,
+      cruises:   itin.cruises.length,
+      activities:itin.activities.length,
+      transfers: itin.groundTransfers.length,
+      notes:     itin.notes.length,
+    };
+    const dur = itin.startDate && itin.endDate
+      ? `${fmt_date_short(itin.startDate)} – ${fmt_date(itin.endDate)}`
+      : fmt_date(itin.startDate);
+    const dest = itin.startDestination && itin.endDestination && itin.startDestination !== itin.endDestination
+      ? `${itin.startDestination} → ${itin.endDestination}`
+      : (itin.startDestination || itin.endDestination || '');
+    const allBadges = [
+      counts.flights    ? `<span class="badge badge-flight">✈ ${counts.flights} Flight${counts.flights>1?'s':''}</span>` : '',
+      counts.hotels     ? `<span class="badge badge-hotel">🏨 ${counts.hotels} Hotel${counts.hotels>1?'s':''}</span>` : '',
+      counts.cars       ? `<span class="badge badge-car">🚗 ${counts.cars} Car Rental${counts.cars>1?'s':''}</span>` : '',
+      counts.cruises    ? `<span class="badge badge-cruise">⛴ ${counts.cruises} Cruise${counts.cruises>1?'s':''}</span>` : '',
+      counts.activities ? `<span class="badge badge-activity">🎯 ${counts.activities} Activit${counts.activities>1?'ies':'y'}</span>` : '',
+    ].filter(Boolean).join('');
+
+    const tabs = [
+      ['flights','✈ Flights',counts.flights],
+      ['hotels','🏨 Hotels',counts.hotels],
+      ['cars','🚗 Cars',counts.cars],
+      ['cruises','⛴ Cruises',counts.cruises],
+      ['activities','🎯 Activities',counts.activities],
+      ['transfers','🚌 Transfers',counts.transfers],
+      ['notes','📝 Notes',counts.notes],
+    ].filter(([,, c]) => c > 0 || ['flights','hotels','notes'].includes(arguments[0]));
+
+    let tabContent = '';
+    if (tab === 'flights')    tabContent = Views._flights(itin);
+    else if (tab === 'hotels')    tabContent = Views._hotels(itin);
+    else if (tab === 'cars')      tabContent = Views._cars(itin);
+    else if (tab === 'cruises')   tabContent = Views._cruises(itin);
+    else if (tab === 'activities')tabContent = Views._activities(itin);
+    else if (tab === 'transfers') tabContent = Views._transfers(itin);
+    else if (tab === 'notes')     tabContent = Views._notes(itin);
+
+    const visibleTabs = [
+      counts.flights    ? ['flights','✈ Flights',counts.flights] : null,
+      counts.hotels     ? ['hotels','🏨 Hotels',counts.hotels] : null,
+      counts.cars       ? ['cars','🚗 Cars',counts.cars] : null,
+      counts.cruises    ? ['cruises','⛴ Cruises',counts.cruises] : null,
+      counts.activities ? ['activities','🎯 Activities',counts.activities] : null,
+      counts.transfers  ? ['transfers','🚌 Transfers',counts.transfers] : null,
+      counts.notes      ? ['notes','📝 Notes',counts.notes] : null,
+    ].filter(Boolean);
+    if (!visibleTabs.find(t=>t[0]===tab)) State.tripTab = visibleTabs[0]?.[0] || 'flights';
+
+    return `
+      <button class="btn btn-secondary btn-sm" onclick="history.back()||Router.go('trips')" style="margin-bottom:16px">← Back</button>
+      <div class="trip-hero">
+        <h1>${h(itin.title)}</h1>
+        <div class="meta">
+          <span>📅 ${dur}</span>
+          ${dest ? `<span>📍 ${h(dest)}</span>` : ''}
+        </div>
+        <div class="component-badges">${allBadges || '<span style="opacity:.6;font-size:13px">No components recorded</span>'}</div>
+      </div>
+      <div class="tabs">
+        ${visibleTabs.map(([key,label,cnt])=>`
+          <button class="tab-btn ${tab===key?'active':''}" onclick="State.tripTab='${key}';App.render_content()">
+            ${label} <span class="count">${cnt}</span>
+          </button>`).join('')}
+      </div>
+      ${tabContent}
+    `;
+  },
+
+  _flights(itin) {
+    if (!itin.flights.length) return `<div class="empty-state"><div class="icon">✈️</div><p>No flights recorded for this trip.</p></div>`;
+    return itin.flights.map(f => {
+      const segs = f.segments.map(s => `
+        <div class="flight-seg">
+          <div class="airline-badge">${h(s.airline||'?')}<br><small style="font-weight:400">${h(s.flightNo||'')}</small></div>
+          <div class="route">
+            <div class="cities">
+              <strong>${h(s.departCity||'?')}</strong>
+              <span class="arrow">→</span>
+              <strong>${h(s.arriveCity||'?')}</strong>
+            </div>
+            <div class="times">
+              ${s.departDate ? fmt_date_short(s.departDate) : ''}
+              ${s.departTime ? ' at ' + fmt_time(s.departTime) : ''}
+              ${s.arriveDate && s.arriveDate !== s.departDate ? ` → ${fmt_date_short(s.arriveDate)}` : ''}
+              ${s.arriveTime ? ' arrives ' + fmt_time(s.arriveTime) : ''}
+            </div>
+          </div>
+          <div class="seat-class">
+            ${s.seatNo ? `<strong>Seat ${h(s.seatNo)}</strong>` : ''}
+            <span>${h(s.class||'')}</span>
+          </div>
+        </div>`).join('');
+      return `
+        <div class="flight-booking">
+          <div class="flight-booking-header">
+            <div>
+              ${f.confirmationNo ? `<div class="conf">Conf# ${h(f.confirmationNo)}</div>` : ''}
+              <div class="meta">${f.bookedThrough ? `Booked via ${h(f.bookedThrough)}` : ''} ${f.dateBooked ? '· ' + fmt_date(f.dateBooked) : ''}</div>
+            </div>
+            <div>${f.price ? `<div class="price">${fmt_money(f.price)}</div>` : ''}${f.howPaid ? `<div class="meta">${h(f.howPaid)}</div>` : ''}</div>
+          </div>
+          <div class="flight-segments">${segs}</div>
+          ${f.comments ? `<div style="padding:0 18px 14px"><div class="comments-block">${h(f.comments)}</div></div>` : ''}
+        </div>`;
+    }).join('');
+  },
+
+  _hotels(itin) {
+    if (!itin.hotels.length) return `<div class="empty-state"><div class="icon">🏨</div><p>No hotels recorded for this trip.</p></div>`;
+    return itin.hotels.map(ho => {
+      const nights = ho.checkIn && ho.checkOut
+        ? Math.round((new Date(ho.checkOut) - new Date(ho.checkIn)) / 86400000) : null;
+      return `
+        <div class="hotel-card">
+          <div class="hotel-card-header">
+            <div>
+              <div class="name">${h(ho.hotelName)}</div>
+              ${ho.hotelCity ? `<div style="font-size:12px;color:#065f46;margin-top:2px">📍 ${h(ho.hotelCity)}${ho.hotelState?', '+ho.hotelState:''}</div>` : ''}
+            </div>
+            <div>${ho.price ? `<div class="price">${fmt_money(ho.price)}${ho.pricePer?'/'+ho.pricePer:''}</div>` : ''}</div>
+          </div>
+          <div class="hotel-card-body">
+            <div class="info-row">
+              <div class="lbl">Check-in</div>
+              <div class="val">${fmt_date(ho.checkIn)}</div>
+            </div>
+            <div class="info-row">
+              <div class="lbl">Check-out</div>
+              <div class="val">${fmt_date(ho.checkOut)} ${nights!=null?`<span style="color:var(--muted);font-size:12px">(${nights} night${nights!==1?'s':''})</span>`:''}
+              </div>
+            </div>
+            ${ho.roomType ? `<div class="info-row"><div class="lbl">Room Type</div><div class="val">${h(ho.roomType)}</div></div>` : ''}
+            ${ho.confirmationNo ? `<div class="info-row"><div class="lbl">Confirmation</div><div class="val" style="font-weight:700">${h(ho.confirmationNo)}</div></div>` : ''}
+            ${ho.hotelPhone ? `<div class="info-row"><div class="lbl">Phone</div><div class="val">${h(ho.hotelPhone)}</div></div>` : ''}
+            ${ho.bookedThrough ? `<div class="info-row"><div class="lbl">Booked Via</div><div class="val">${h(ho.bookedThrough)}${ho.dateBooked?' · '+fmt_date(ho.dateBooked):''}</div></div>` : ''}
+            ${ho.hotelAddress ? `<div class="info-row full"><div class="lbl">Address</div><div class="val">${h(ho.hotelAddress)}</div></div>` : ''}
+            ${ho.comments ? `<div class="info-row full"><div class="comments-block">${h(ho.comments)}</div></div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  },
+
+  _cars(itin) {
+    if (!itin.rentalCars.length) return `<div class="empty-state"><div class="icon">🚗</div><p>No car rentals recorded for this trip.</p></div>`;
+    return itin.rentalCars.map(c => `
+      <div class="car-card">
+        <div class="car-card-header">
+          <div>
+            <div class="company">${h(c.company||'Car Rental')}</div>
+            ${c.carType ? `<div style="font-size:12px;color:#92400e;margin-top:2px">${h(c.carType)}</div>` : ''}
+          </div>
+          <div>${c.priceQuoted ? `<div class="price">${fmt_money(c.priceQuoted)}${c.pricePer?'/'+c.pricePer:''}</div>` : ''}</div>
+        </div>
+        <div class="car-card-body">
+          <div class="info-row">
+            <div class="lbl">Pick-up</div>
+            <div class="val">${fmt_date(c.pickupDate)}${c.pickupTime?' at '+fmt_time(c.pickupTime):''}</div>
+          </div>
+          <div class="info-row">
+            <div class="lbl">Drop-off</div>
+            <div class="val">${fmt_date(c.dropOffDate)}${c.dropOffTime?' at '+fmt_time(c.dropOffTime):''}</div>
+          </div>
+          ${c.confirmationNo ? `<div class="info-row"><div class="lbl">Confirmation</div><div class="val" style="font-weight:700">${h(c.confirmationNo)}</div></div>` : ''}
+          ${c.companyPhone ? `<div class="info-row"><div class="lbl">Phone</div><div class="val">${h(c.companyPhone)}</div></div>` : ''}
+          ${c.bookedThrough ? `<div class="info-row"><div class="lbl">Booked Via</div><div class="val">${h(c.bookedThrough)}${c.dateBooked?' · '+fmt_date(c.dateBooked):''}</div></div>` : ''}
+          ${c.location ? `<div class="info-row"><div class="lbl">Location</div><div class="val">${h(c.location)}</div></div>` : ''}
+          ${c.comments ? `<div class="info-row full"><div class="comments-block">${h(c.comments)}</div></div>` : ''}
+        </div>
+      </div>`).join('');
+  },
+
+  _cruises(itin) {
+    if (!itin.cruises.length) return `<div class="empty-state"><div class="icon">⛴️</div><p>No cruises recorded for this trip.</p></div>`;
+    return itin.cruises.map(c => {
+      const perksHtml = c.perks?.length ? `
+        <div class="perks-list">
+          <div class="perk-title">Perks & Extras</div>
+          ${c.perks.map(p=>`<div class="perk-item"><span>${h(p.perk||'')}</span><span>${p.amount?fmt_money(p.amount):''}</span></div>`).join('')}
+        </div>` : '';
+      return `
+        <div class="cruise-card">
+          <div class="cruise-card-header">
+            <div>
+              <div class="ship">${h(c.shipName||'Cruise')}</div>
+              ${c.noOfNights ? `<div style="font-size:13px;color:#5b21b6;margin-top:3px">${c.noOfNights} nights</div>` : ''}
+            </div>
+            <div>${c.totalPrice ? `<div class="price">${fmt_money(c.totalPrice)} total</div>` : (c.price?`<div class="price">${fmt_money(c.price)}/pp</div>`:'')}</div>
+          </div>
+          <div class="cruise-card-body">
+            <div class="cruise-route">
+              <div class="port">
+                <div class="city">${h(c.departPort||'?')}</div>
+                <div class="date">${fmt_date(c.sailingDate)}${c.departTime?' at '+fmt_time(c.departTime):''}</div>
+              </div>
+              <div class="arrow">⛴ ─────→</div>
+              <div class="port">
+                <div class="city">${h(c.arrivePort||'?')}</div>
+                <div class="date">${c.arrivalDate?fmt_date(c.arrivalDate):''}</div>
+              </div>
+            </div>
+            <div class="cruise-info-grid">
+              ${c.reservationNo ? `<div class="info-item"><div class="lbl">Reservation</div><div class="val" style="font-weight:700">${h(c.reservationNo)}</div></div>` : ''}
+              ${c.roomType ? `<div class="info-item"><div class="lbl">Cabin Type</div><div class="val">${h(c.roomType)}</div></div>` : ''}
+              ${c.stateRoomNo ? `<div class="info-item"><div class="lbl">Cabin #</div><div class="val">${h(c.stateRoomNo)}</div></div>` : ''}
+              ${c.deckNumber ? `<div class="info-item"><div class="lbl">Deck</div><div class="val">${h(String(c.deckNumber))}</div></div>` : ''}
+              ${c.diningTime ? `<div class="info-item"><div class="lbl">Dining</div><div class="val">${fmt_time(c.diningTime)}</div></div>` : ''}
+              ${c.bookedThrough ? `<div class="info-item"><div class="lbl">Booked Via</div><div class="val">${h(c.bookedThrough)}</div></div>` : ''}
+              ${c.guest1 ? `<div class="info-item"><div class="lbl">Guest 1</div><div class="val">${h(c.guest1)}</div></div>` : ''}
+              ${c.guest2 ? `<div class="info-item"><div class="lbl">Guest 2</div><div class="val">${h(c.guest2)}</div></div>` : ''}
+            </div>
+            ${c.comments ? `<div class="comments-block" style="margin-bottom:12px">${h(c.comments)}</div>` : ''}
+            ${perksHtml}
+          </div>
+        </div>`;
+    }).join('');
+  },
+
+  _activities(itin) {
+    if (!itin.activities.length) return `<div class="empty-state"><div class="icon">🎯</div><p>No activities recorded for this trip.</p></div>`;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `<div class="activity-list">
+      ${itin.activities.map(a => {
+        let dateBox = '<div class="date-box"><div class="month">—</div><div class="day">?</div></div>';
+        if (a.date) {
+          const [,m,d] = a.date.split('-');
+          dateBox = `<div class="date-box"><div class="month">${months[+m-1]}</div><div class="day">${+d}</div></div>`;
+        }
+        return `<div class="activity-item">
+          ${dateBox}
+          <div class="details">
+            <div class="name">${h(a.activity||'Activity')}</div>
+            ${a.location ? `<div class="loc">📍 ${h(a.location)}</div>` : ''}
+            ${a.time ? `<div class="loc">⏰ ${fmt_time(a.time)}</div>` : ''}
+            ${a.comments ? `<div class="note">${h(a.comments)}</div>` : ''}
+          </div>
+          <div class="price-box">${a.price ? fmt_money(a.price) : ''}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  },
+
+  _transfers(itin) {
+    if (!itin.groundTransfers.length) return `<div class="empty-state"><div class="icon">🚌</div><p>No ground transfers recorded.</p></div>`;
+    return itin.groundTransfers.map(t => `
+      <div class="transfer-card">
+        <div class="transfer-card-header">
+          <div class="name">${h(t.vehicleType||'Transfer')} ${t.whenUsed?'— '+t.whenUsed:''}</div>
+          ${t.priceQuoted ? `<div style="font-weight:700">${fmt_money(t.priceQuoted)}${t.pricePer?'/'+t.pricePer:''}</div>` : ''}
+        </div>
+        <div class="transfer-card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="info-row">
+              <div class="lbl">Pick-up</div>
+              <div class="val">${fmt_date(t.pickupDate)}${t.pickupTime?' at '+fmt_time(t.pickupTime):''}</div>
+              ${t.pickupLocation?`<div style="font-size:12px;color:var(--muted)">📍 ${h(t.pickupLocation)}</div>`:''}
+            </div>
+            <div class="info-row">
+              <div class="lbl">Drop-off</div>
+              <div class="val">${fmt_date(t.dropOffDate)}${t.dropOffTime?' at '+fmt_time(t.dropOffTime):''}</div>
+              ${t.dropOffLocation?`<div style="font-size:12px;color:var(--muted)">📍 ${h(t.dropOffLocation)}</div>`:''}
+            </div>
+            ${t.confirmationNo?`<div class="info-row"><div class="lbl">Conf#</div><div class="val" style="font-weight:700">${h(t.confirmationNo)}</div></div>`:''}
+            ${t.passengers?`<div class="info-row"><div class="lbl">Passengers</div><div class="val">${t.passengers}</div></div>`:''}
+          </div>
+          ${t.comments?`<div class="comments-block" style="margin-top:10px">${h(t.comments)}</div>`:''}
+        </div>
+      </div>`).join('');
+  },
+
+  _notes(itin) {
+    if (!itin.notes.length) return `<div class="empty-state"><div class="icon">📝</div><p>No notes for this trip.</p></div>`;
+    return itin.notes.map(n => `<div class="note-item">${h(n.note)}</div>`).join('');
+  },
+
+  // ── Travellers ──────────────────────────────────────────────
+  travellers() {
+    const tv = State.data.travellers;
+    return `
+      <div class="section-title">Travellers (${tv.length})</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+        ${tv.map(t => `
+          <div class="card">
+            <div style="font-size:16px;font-weight:700;margin-bottom:10px">👤 ${h(t.firstName)} ${h(t.lastName)}</div>
+            ${[
+              t.airportPref ? ['Home Airport', t.airportPref] : null,
+              t.seatPref    ? ['Seat Pref',    t.seatPref]    : null,
+              t.classPref   ? ['Class',        t.classPref]   : null,
+              t.meal        ? ['Meal',         t.meal]        : null,
+              t.airlinePref1? ['Airline 1',    t.airlinePref1]: null,
+              t.tsaPrecheck ? ['TSA Pre✓',     t.tsaPrecheck] : null,
+            ].filter(Boolean).map(([l,v])=>`
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)">
+                <span style="color:var(--muted)">${l}</span>
+                <span style="font-weight:500">${h(String(v))}</span>
+              </div>`).join('')}
+          </div>`).join('')}
+      </div>`;
+  },
+
+  // ── Airlines ref ────────────────────────────────────────────
+  airlines() {
+    const al = State.data.reference.airlines;
+    return `
+      <div class="section-title">Airlines (${al.length})</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="trips-table" style="cursor:default">
+          <thead><tr><th>Airline</th><th>Phone</th><th>Loyalty Program</th></tr></thead>
+          <tbody>
+          ${al.map(a=>`<tr style="cursor:default">
+            <td style="font-weight:600">✈ ${h(a.name)}</td>
+            <td style="color:var(--muted)">${h(a.phone||'')}</td>
+            <td>${h(a.program||'')}</td>
+          </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  },
+
+  // ── Hotels ref ──────────────────────────────────────────────
+  hotels_ref() {
+    const hs = State.data.reference.hotels.filter(h=>h.name).sort((a,b)=>a.name.localeCompare(b.name));
+    return `
+      <div class="section-title">Hotels (${hs.length})</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="trips-table" style="cursor:default">
+          <thead><tr><th>Hotel</th><th>City</th><th>Phone</th></tr></thead>
+          <tbody>
+          ${hs.map(ho=>`<tr style="cursor:default">
+            <td style="font-weight:600">🏨 ${h(ho.name)}</td>
+            <td style="color:var(--muted)">${h((ho.city||'')+(ho.state?', '+ho.state:''))}</td>
+            <td style="color:var(--muted);font-size:13px">${h(ho.phoneSpecific||ho.phone||'')}</td>
+          </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  },
+
+  // ── Add Trip ────────────────────────────────────────────────
+  add() {
+    const travellers = State.data.travellers;
+    return `
+      <div class="form-section">
+        <h3>New Trip</h3>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Trip Title / Purpose</label>
+            <input type="text" id="f-title" placeholder="e.g. Paris Anniversary Trip">
+          </div>
+          <div class="form-group">
+            <label>Traveller</label>
+            <select id="f-traveller">
+              <option value="">— Select —</option>
+              ${travellers.map(t=>`<option value="${t.id}">${h(t.firstName)} ${h(t.lastName)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Start Date</label>
+            <input type="date" id="f-start">
+          </div>
+          <div class="form-group">
+            <label>End Date</label>
+            <input type="date" id="f-end">
+          </div>
+          <div class="form-group">
+            <label>Departing From</label>
+            <input type="text" id="f-from" placeholder="e.g. San Francisco, CA">
+          </div>
+          <div class="form-group">
+            <label>Destination</label>
+            <input type="text" id="f-to" placeholder="e.g. Paris, France">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-secondary" onclick="Router.go('trips')">Cancel</button>
+          <button class="btn btn-primary" onclick="App.save_trip()">Save Trip →</button>
+        </div>
+      </div>
+      <div class="alert alert-info">
+        After saving the basic trip, you can open it and add flights, hotels, cars, and other components.
+        <br><strong>Note:</strong> full component editing is coming soon — for now new trips capture the basics.
+      </div>`;
+  },
+};
+
+// ══════════════════════════════════════════════════════════════
+//  APP
+// ══════════════════════════════════════════════════════════════
+const App = {
+  async init() {
+    // Show redirect URI on setup screen
+    $('#redirect-uri-display').textContent = REDIRECT_URI;
+
+    // Check for OAuth callback
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get('code');
+    if (code) {
+      this.show_loading('Connecting to Dropbox…');
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+      const token = await Auth.handleCallback(code);
+      if (!token) {
+        this.show_setup('Could not exchange auth code. Please try again.');
+        return;
+      }
+    }
+
+    // Check if connected
+    if (Auth.isConnected()) {
+      this.show_loading('Loading your travel data…');
+      try {
+        let data = await DB.load();
+        if (!data) {
+          // No data file yet — upload initial data
+          $('#loading-msg').textContent = 'First time setup: uploading your travel data to Dropbox…';
+          data = await this.load_initial_data();
+          if (data) {
+            await DB.save(data);
+          } else {
+            this.show_setup('Could not load initial travel data. Please ensure travel-data.json is in the same folder as index.html, or re-upload it to Dropbox at /travel-data.json.');
+            return;
+          }
+        }
+        State.data = data;
+        this.show_app();
+        Router.go('dashboard');
+      } catch(e) {
+        console.error(e);
+        this.show_setup('Error loading data: ' + e.message);
+      }
+    } else {
+      this.show_setup();
+    }
+  },
+
+  async load_initial_data() {
+    // Try to load travel-data.json from same directory as this page
+    try {
+      const r = await fetch('./travel-data.json');
+      if (r.ok) return r.json();
+    } catch(e) {}
+    return null;
+  },
+
+  show_setup(err) {
+    $('#screen-loading').classList.add('hidden');
+    $('#screen-setup').classList.remove('hidden');
+    $('#screen-app').classList.add('hidden');
+    if (err) {
+      $('#setup-error').textContent = err;
+      $('#setup-error').classList.remove('hidden');
+    }
+  },
+
+  show_loading(msg) {
+    $('#screen-loading').classList.remove('hidden');
+    $('#screen-setup').classList.add('hidden');
+    $('#screen-app').classList.add('hidden');
+    if (msg) $('#loading-msg').textContent = msg;
+  },
+
+  show_app() {
+    $('#screen-loading').classList.add('hidden');
+    $('#screen-setup').classList.add('hidden');
+    $('#screen-app').classList.remove('hidden');
+  },
+
+  async startAuth() {
+    const key = $('#app-key-input').value.trim();
+    if (!key) {
+      alert('Please enter your Dropbox App Key.');
+      return;
+    }
+    await Auth.startPKCE(key);
+  },
+
+  render() {
+    const titles = {
+      dashboard: 'Dashboard', trips: 'All Trips', trip: 'Trip Detail',
+      add: 'Add Trip', edit: 'Edit Trip', travellers: 'Travellers',
+      airlines: 'Airlines', hotels_ref: 'Hotels Reference',
+    };
+    $('#topbar-title').textContent = titles[State.view] || '';
+    this.render_content();
+  },
+
+  render_content() {
+    const el = $('#content');
+    if (State.view === 'dashboard')    el.innerHTML = Views.dashboard();
+    else if (State.view === 'trips')   el.innerHTML = Views.trips();
+    else if (State.view === 'trip')    el.innerHTML = Views.trip(State.tripId);
+    else if (State.view === 'add')     el.innerHTML = Views.add();
+    else if (State.view === 'travellers') el.innerHTML = Views.travellers();
+    else if (State.view === 'airlines')   el.innerHTML = Views.airlines();
+    else if (State.view === 'hotels_ref') el.innerHTML = Views.hotels_ref();
+    else el.innerHTML = `<div class="card"><p>View not found.</p></div>`;
+  },
+
+  async saveData() {
+    const btn = document.querySelector('.save-btn');
+    const status = $('#save-status');
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span> Saving…';
+    try {
+      await DB.save(State.data);
+      status.textContent = 'Saved ' + new Date().toLocaleTimeString();
+      btn.innerHTML = '<span>✅</span> Saved!';
+      setTimeout(() => {
+        btn.innerHTML = '<span>💾</span> Save to Dropbox';
+        btn.disabled = false;
+      }, 2000);
+    } catch(e) {
+      alert('Save failed: ' + e.message);
+      btn.innerHTML = '<span>💾</span> Save to Dropbox';
+      btn.disabled = false;
+    }
+  },
+
+  save_trip() {
+    const title = $('#f-title').value.trim();
+    if (!title) { alert('Please enter a trip title.'); return; }
+    const newId = Date.now();
+    const trip = {
+      id: newId,
+      travellerId: parseInt($('#f-traveller').value) || null,
+      title,
+      startDate: $('#f-start').value || null,
+      endDate: $('#f-end').value || null,
+      startDestination: $('#f-from').value.trim() || null,
+      endDestination: $('#f-to').value.trim() || null,
+      flights: [], hotels: [], rentalCars: [], cruises: [],
+      activities: [], groundTransfers: [], notes: [],
+    };
+    State.data.itineraries.unshift(trip);
+    State.dirty = true;
+    Router.go('trip', {id: newId, tab: 'flights'});
+    this.saveData();
+  },
+
+  toggleSidebar() {
+    $('#sidebar').classList.toggle('open');
+    $('#sidebar-overlay').classList.toggle('show');
+  }
+};
+
+// Start the app
+App.init();
+</script>
+</body>
+</html>
