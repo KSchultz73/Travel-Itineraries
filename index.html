@@ -1069,6 +1069,7 @@ const Views = {
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-secondary btn-sm" onclick="Edit.trip(${itin.id})">✏️ Edit Trip</button>
           <button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.3)" onclick="Print.show(${itin.id})">🖨️ Print / PDF</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.3)" onclick="PrintCal.show(${itin.id})">📅 Day-by-Day</button>
           <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="Edit.delete_trip(${itin.id})">🗑 Delete Trip</button>
         </div>
       </div>
@@ -2512,9 +2513,10 @@ const RefEdit = {
 
   edit(key, idx) {
     const cfg = REF_CONFIGS[key];
-    const rec = State.data.reference[cfg.refKey][idx];
-    Modal.show(`Edit ${cfg.label.replace(/s$/,'').replace(/ \(.*\)/,'')}`, RefEdit._form(cfg, rec), 'Save', () => {
-      const result = RefEdit._read(cfg, typeof rec === 'object' ? rec : {});
+    const orig = State.data.reference[cfg.refKey][idx];
+    const snap = cfg.simple ? orig : {...orig};
+    Modal.show(`Edit ${cfg.label.replace(/s$/,'').replace(/ \(.*\)/,'')}`, RefEdit._form(cfg, snap), 'Save', () => {
+      const result = RefEdit._read(cfg, cfg.simple ? snap : {...snap});
       if (cfg.simple) {
         if (!result.trim()) return;
         State.data.reference[cfg.refKey][idx] = result.trim();
@@ -2523,7 +2525,7 @@ const RefEdit = {
         if (reqField && !result[reqField.key]?.trim()) {
           alert(`${reqField.label} is required.`); return;
         }
-        // fields written in-place via _read for objects
+        State.data.reference[cfg.refKey][idx] = result;
       }
       Modal.hide();
       if (State.view==='ref_list') App.render_content();
@@ -2753,6 +2755,219 @@ const Print = {
 
   _section(title, content) {
     return `<div class="section"><div class="section-title">${title}</div>${content}</div>`;
+  },
+};
+
+// ══════════════════════════════════════════════════════════════
+//  PRINT — DAY-BY-DAY CALENDAR
+// ══════════════════════════════════════════════════════════════
+const PrintCal = {
+  show(id) {
+    const itin = find_itin(id);
+    const win = window.open('', '_blank');
+    win.document.write(PrintCal._html(itin));
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 400);
+  },
+
+  // Add days between two date strings (inclusive start, inclusive end)
+  _dateRange(start, end) {
+    const days = [];
+    if (!start) return days;
+    const s = new Date(start + 'T12:00:00');
+    const e = end ? new Date(end + 'T12:00:00') : s;
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1))
+      days.push(d.toISOString().slice(0, 10));
+    return days;
+  },
+
+  // Format a date string as "Monday, June 3, 2024"
+  _fmtDay(ds) {
+    if (!ds) return '';
+    const d = new Date(ds + 'T12:00:00');
+    return d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  },
+
+  // Sort key: '~HH:MM' are sort-only hints (no display); blank times sort last
+  _timeKey(t) {
+    if (!t) return '9999';
+    return t.startsWith('~') ? t.slice(1).replace(':', '') : t.replace(':', '');
+  },
+  // Display time: suppress sort-only hints
+  _dispTime(t) { return (!t || t.startsWith('~')) ? '' : fmt_time(t); },
+
+  _html(itin) {
+    // Map of date-string → array of event objects
+    const days = {};
+    const addEvent = (date, time, icon, title, detail, style) => {
+      if (!date) return;
+      if (!days[date]) days[date] = [];
+      days[date].push({ time: time || '', icon, title, detail: detail || '', style: style || '' });
+    };
+
+    // ── Flight segments ──
+    itin.flights.forEach(f => {
+      f.segments.forEach(s => {
+        const dep = s.departDate;
+        const route = `${h(s.departCity || '')} → ${h(s.arriveCity || '')}`;
+        const airline = `${h(s.airline || '')}${s.flightNo ? ' ' + h(s.flightNo) : ''}`;
+        const seat = s.class || s.seatNo ? `${s.class || ''}${s.seatNo ? ' · Seat ' + h(s.seatNo) : ''}` : '';
+        const arr = s.arriveTime ? `Arrives ${fmt_time(s.arriveTime)}` : '';
+        const pax = s.passenger ? `Passenger: ${h(s.passenger)}` : '';
+        addEvent(dep, s.departTime, '✈', `${airline} &nbsp;·&nbsp; ${route}`,
+          [arr, seat, pax].filter(Boolean).join(' &nbsp;·&nbsp; '), 'flight');
+      });
+    });
+
+    // ── Hotels ──
+    itin.hotels.forEach(ho => {
+      const ci = ho.checkIn, co = ho.checkOut;
+      const name = h(ho.hotelName || 'Hotel');
+      const loc = ho.hotelCity ? ` · ${h(ho.hotelCity)}${ho.hotelState ? ', ' + h(ho.hotelState) : ''}` : '';
+      const conf = ho.confirmationNo ? `Conf# ${h(ho.confirmationNo)}` : '';
+      const room = ho.roomType ? h(ho.roomType) : '';
+      // Check-in day — sort hint '14:00' but don't display a time
+      addEvent(ci, '~14:00', '🏨', `CHECK-IN: ${name}${loc}`,
+        [room, conf, ho.hotelPhone ? `☎ ${h(ho.hotelPhone)}` : ''].filter(Boolean).join(' &nbsp;·&nbsp; '), 'hotel-in');
+      // Intermediate nights
+      if (ci && co) {
+        const range = PrintCal._dateRange(ci, co);
+        range.slice(1, -1).forEach(d =>
+          addEvent(d, '', '🏨', `Staying at: ${name}${loc}`, room, 'hotel-mid'));
+        // Check-out day — sort hint '11:00'
+        addEvent(co, '~11:00', '🏨', `CHECK-OUT: ${name}${loc}`, conf, 'hotel-out');
+      }
+    });
+
+    // ── Car Rentals ──
+    itin.rentalCars.forEach(c => {
+      const label = `${h(c.company || 'Car Rental')}${c.carType ? ' · ' + h(c.carType) : ''}`;
+      const conf = c.confirmationNo ? `Conf# ${h(c.confirmationNo)}` : '';
+      addEvent(c.pickupDate, c.pickupTime, '🚗', `CAR PICK-UP: ${label}`, conf, 'car');
+      // Days the car is held
+      if (c.pickupDate && c.dropOffDate) {
+        PrintCal._dateRange(c.pickupDate, c.dropOffDate).slice(1, -1).forEach(d =>
+          addEvent(d, '', '🚗', `Car: ${label}`, '', 'car-mid'));
+        addEvent(c.dropOffDate, c.dropOffTime, '🚗', `CAR DROP-OFF: ${label}`, conf, 'car');
+      }
+    });
+
+    // ── Cruises ──
+    itin.cruises.forEach(c => {
+      const ship = h(c.shipName || 'Cruise');
+      const conf = c.reservationNo ? `Reservation# ${h(c.reservationNo)}` : '';
+      const cabin = c.roomType ? `Cabin: ${h(c.roomType)}${c.stateRoomNo ? ' #' + h(c.stateRoomNo) : ''}` : '';
+      addEvent(c.sailingDate, c.departTime, '⛴', `EMBARK: ${ship} from ${h(c.departPort || '')}`,
+        [cabin, conf, c.diningTime ? 'Dining: ' + fmt_time(c.diningTime) : ''].filter(Boolean).join(' &nbsp;·&nbsp; '), 'cruise');
+      if (c.sailingDate && c.arrivalDate) {
+        PrintCal._dateRange(c.sailingDate, c.arrivalDate).slice(1, -1).forEach(d =>
+          addEvent(d, '', '⛴', `At sea: ${ship}`, '', 'cruise-mid'));
+        addEvent(c.arrivalDate, '', '⛴', `DEBARK: ${ship} at ${h(c.arrivePort || '')}`, '', 'cruise');
+      }
+    });
+
+    // ── Activities ──
+    itin.activities.forEach(a => {
+      const title = h(a.activity || 'Activity');
+      const loc = a.location ? `📍 ${h(a.location)}` : '';
+      const price = a.price ? fmt_money(a.price) : '';
+      addEvent(a.date, a.time, '🎯', title,
+        [loc, price, a.comments ? h(a.comments) : ''].filter(Boolean).join(' &nbsp;·&nbsp; '), 'activity');
+    });
+
+    // ── Ground Transfers ──
+    itin.groundTransfers.forEach(t => {
+      const label = `${h(t.vehicleType || 'Transfer')}${t.whenUsed ? ' — ' + h(t.whenUsed) : ''}`;
+      const from = t.pickupLocation ? `From: ${h(t.pickupLocation)}` : '';
+      const to = t.dropOffLocation ? `To: ${h(t.dropOffLocation)}` : '';
+      addEvent(t.pickupDate, t.pickupTime, '🚌', label,
+        [from, to].filter(Boolean).join(' &nbsp;·&nbsp; '), 'transfer');
+    });
+
+    // ── Sort dates and events within each date ──
+    const sortedDates = Object.keys(days).sort();
+
+    const dayBlocks = sortedDates.map(ds => {
+      const evts = days[ds].sort((a, b) => PrintCal._timeKey(a.time).localeCompare(PrintCal._timeKey(b.time)));
+      const rows = evts.map(ev => `
+        <tr class="ev ev-${ev.style}">
+          <td class="ev-time">${PrintCal._dispTime(ev.time)}</td>
+          <td class="ev-icon">${ev.icon}</td>
+          <td class="ev-body">
+            <strong>${ev.title}</strong>
+            ${ev.detail ? `<div class="ev-detail">${ev.detail}</div>` : ''}
+          </td>
+        </tr>`).join('');
+      return `
+        <div class="day-block">
+          <div class="day-header">${PrintCal._fmtDay(ds)}</div>
+          <table class="ev-table"><tbody>${rows}</tbody></table>
+        </div>`;
+    });
+
+    const dur = itin.startDate && itin.endDate
+      ? `${fmt_date(itin.startDate)} – ${fmt_date(itin.endDate)}`
+      : fmt_date(itin.startDate);
+    const dest = itin.startDestination && itin.endDestination && itin.startDestination !== itin.endDestination
+      ? `${itin.startDestination} → ${itin.endDestination}`
+      : (itin.startDestination || itin.endDestination || '');
+
+    const notesHtml = itin.notes.length
+      ? `<div class="notes-section"><div class="notes-title">📝 Notes</div>
+           ${itin.notes.map(n=>`<div class="note">${h(n.note)}</div>`).join('')}
+         </div>` : '';
+
+    return `<!DOCTYPE html><html><head>
+      <meta charset="UTF-8">
+      <title>${h(itin.title)} — Day by Day</title>
+      <style>
+        * { box-sizing:border-box; }
+        body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:#1e293b; margin:0; padding:0; font-size:13px; }
+        .header { background:#1e3a5f; color:white; padding:20px 28px; }
+        .header h1 { font-size:20px; font-weight:800; margin:0 0 4px; }
+        .header .meta { font-size:13px; opacity:.85; }
+        .body { padding:20px 28px; }
+        .day-block { margin-bottom:20px; page-break-inside:avoid; }
+        .day-header { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.5px;
+                      background:#1e3a5f; color:white; padding:5px 10px; border-radius:4px; margin-bottom:6px; }
+        .ev-table { width:100%; border-collapse:collapse; }
+        .ev-table tr { border-bottom:1px solid #f1f5f9; }
+        .ev-time { width:52px; padding:5px 8px 5px 4px; font-size:12px; font-weight:700; color:#475569; white-space:nowrap; vertical-align:top; }
+        .ev-icon { width:22px; padding:5px 4px; vertical-align:top; font-size:14px; }
+        .ev-body { padding:5px 4px; vertical-align:top; line-height:1.4; }
+        .ev-detail { font-size:11px; color:#64748b; margin-top:2px; }
+        .ev-hotel-in  td { background:#f0fdf4; }
+        .ev-hotel-out td { background:#fef9c3; }
+        .ev-hotel-mid td { background:#f8fafc; color:#64748b; }
+        .ev-cruise-mid td { background:#f0f9ff; color:#64748b; }
+        .ev-car-mid   td { background:#fafafa; color:#64748b; }
+        .ev-flight    td { background:#eff6ff; }
+        .ev-activity  td { background:#fdf4ff; }
+        .ev-cruise    td { background:#e0f2fe; }
+        .ev-transfer  td { background:#fff7ed; }
+        .notes-section { margin-top:24px; border-top:2px solid #e2e8f0; padding-top:16px; }
+        .notes-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#64748b; margin-bottom:10px; }
+        .note { background:#fffbeb; border:1px solid #fef08a; border-radius:5px; padding:10px 12px; margin-bottom:8px; font-size:12px; line-height:1.6; white-space:pre-wrap; }
+        @media print {
+          body { font-size:11px; }
+          .header { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+          .day-header { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+          .ev-hotel-in td, .ev-hotel-out td, .ev-hotel-mid td,
+          .ev-cruise td, .ev-cruise-mid td, .ev-flight td,
+          .ev-activity td, .ev-transfer td, .ev-car-mid td { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+        }
+      </style>
+    </head><body>
+      <div class="header">
+        <h1>${h(itin.title)}</h1>
+        <div class="meta">📅 ${dur}${dest ? ' &nbsp;·&nbsp; 📍 ' + h(dest) : ''}</div>
+      </div>
+      <div class="body">
+        ${dayBlocks.length ? dayBlocks.join('') : '<p style="color:#64748b">No dated events found for this trip.</p>'}
+        ${notesHtml}
+      </div>
+    </body></html>`;
   },
 };
 
