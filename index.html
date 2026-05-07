@@ -473,6 +473,24 @@
     .modal-header h2 { font-size:18px; font-weight:700; }
     .modal-close { font-size:22px; color:var(--muted); line-height:1; padding:0 4px; }
     .modal-close:hover { color:var(--text); }
+
+    /* ── Add-to-list prompt ─────────────────────────────── */
+    .add-ref-prompt {
+      display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+      margin-top:5px; padding:7px 10px; background:#fffbeb;
+      border:1px solid #fef08a; border-radius:6px; font-size:12px; color:#78350f;
+    }
+    .add-ref-prompt strong { flex:1; }
+    .add-ref-prompt .atp-yes { padding:3px 10px; border-radius:5px; background:var(--amber); color:#78350f; font-size:12px; font-weight:700; border:none; cursor:pointer; }
+    .add-ref-prompt .atp-no  { padding:3px 8px; border-radius:5px; background:#f1f5f9; color:var(--muted); font-size:12px; border:none; cursor:pointer; }
+
+    /* ── Reference list editor ──────────────────────────── */
+    .ref-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
+    .ref-card  { background:var(--card); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); cursor:pointer; transition:transform .15s,box-shadow .15s; }
+    .ref-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+    .ref-card .rc-icon { font-size:28px; margin-bottom:8px; }
+    .ref-card .rc-title { font-size:14px; font-weight:700; }
+    .ref-card .rc-count { font-size:12px; color:var(--muted); margin-top:3px; }
     .seg-block { border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:12px; background:#fafafa; }
     .seg-block-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--muted); }
 
@@ -594,11 +612,27 @@
       <button class="nav-item" onclick="Router.go('travellers')" data-view="travellers">
         <span class="icon">👤</span> Travellers
       </button>
-      <button class="nav-item" onclick="Router.go('airlines')" data-view="airlines">
-        <span class="icon">🛫</span> Airlines
+      <button class="nav-item" onclick="Router.go('ref_home')" data-view="ref_home">
+        <span class="icon">📂</span> Reference Data
       </button>
-      <button class="nav-item" onclick="Router.go('hotels_ref')" data-view="hotels_ref">
+      <div class="nav-section" style="margin-top:4px">Quick Lists</div>
+      <button class="nav-item" onclick="Router.goRef('airlines')" data-view="ref_home">
+        <span class="icon">✈</span> Airlines
+      </button>
+      <button class="nav-item" onclick="Router.goRef('airports')" data-view="ref_home">
+        <span class="icon">🛬</span> Airports
+      </button>
+      <button class="nav-item" onclick="Router.goRef('hotels')" data-view="ref_home">
         <span class="icon">🏨</span> Hotels
+      </button>
+      <button class="nav-item" onclick="Router.goRef('bookingAgents')" data-view="ref_home">
+        <span class="icon">🏢</span> Booking Agents
+      </button>
+      <button class="nav-item" onclick="Router.goRef('carRentalCos')" data-view="ref_home">
+        <span class="icon">🚗</span> Car Rentals
+      </button>
+      <button class="nav-item" onclick="Router.goRef('cruiseLines')" data-view="ref_home">
+        <span class="icon">⛴</span> Cruise Lines
       </button>
     </nav>
     <div class="sidebar-footer">
@@ -799,6 +833,7 @@ let State = {
   view: 'dashboard',
   tripId: null,
   tripTab: 'flights',
+  refKey: null,
   searchQ: '',
   searchYear: '',
   dirty: false,
@@ -810,12 +845,20 @@ let State = {
 const Router = {
   go(view, params = {}) {
     State.view = view;
-    if (params.id !== undefined) State.tripId = params.id;
-    if (params.tab) State.tripTab = params.tab;
+    if (params.id  !== undefined) State.tripId = params.id;
+    if (params.tab !== undefined) State.tripTab = params.tab;
+    if (params.refKey) { State.refKey = params.refKey; }
     App.render();
-    // Update sidebar active state
     $$('#sidebar-nav .nav-item').forEach(el => {
       el.classList.toggle('active', el.dataset.view === view);
+    });
+  },
+  goRef(key) {
+    State.view   = 'ref_list';
+    State.refKey = key;
+    App.render();
+    $$('#sidebar-nav .nav-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.view === 'ref_home');
     });
   }
 };
@@ -1498,8 +1541,9 @@ const App = {
   render() {
     const titles = {
       dashboard: 'Dashboard', trips: 'All Trips', trip: 'Trip Detail',
-      add: 'Add Trip', edit: 'Edit Trip', travellers: 'Travellers',
-      airlines: 'Airlines', hotels_ref: 'Hotels Reference',
+      add: 'Add Trip', travellers: 'Travellers',
+      ref_home: 'Reference Data',
+      ref_list: State.refKey ? (REF_CONFIGS[State.refKey]?.label || 'Reference List') : 'Reference Data',
     };
     $('#topbar-title').textContent = titles[State.view] || '';
     this.render_content();
@@ -1507,13 +1551,13 @@ const App = {
 
   render_content() {
     const el = $('#content');
-    if (State.view === 'dashboard')    el.innerHTML = Views.dashboard();
-    else if (State.view === 'trips')   el.innerHTML = Views.trips();
-    else if (State.view === 'trip')    el.innerHTML = Views.trip(State.tripId);
-    else if (State.view === 'add')     el.innerHTML = Views.add();
+    if      (State.view === 'dashboard')  el.innerHTML = Views.dashboard();
+    else if (State.view === 'trips')      el.innerHTML = Views.trips();
+    else if (State.view === 'trip')       el.innerHTML = Views.trip(State.tripId);
+    else if (State.view === 'add')        el.innerHTML = Views.add();
     else if (State.view === 'travellers') el.innerHTML = Views.travellers();
-    else if (State.view === 'airlines')   el.innerHTML = Views.airlines();
-    else if (State.view === 'hotels_ref') el.innerHTML = Views.hotels_ref();
+    else if (State.view === 'ref_home')   el.innerHTML = Views.ref_home();
+    else if (State.view === 'ref_list')   el.innerHTML = Views.ref_list(State.refKey);
     else el.innerHTML = `<div class="card"><p>View not found.</p></div>`;
   },
 
@@ -2311,6 +2355,232 @@ const Edit = {
     App.render(); App.saveData();
   },
 };
+
+// ══════════════════════════════════════════════════════════════
+//  REFERENCE LIST CONFIGS
+// ══════════════════════════════════════════════════════════════
+const REF_CONFIGS = {
+  airlines:      { label:'Airlines',              icon:'✈',  refKey:'airlines',     valueKey:'name',  simple:false, fields:[{id:'r-name',key:'name',label:'Airline Name',req:true},{id:'r-phone',key:'phone',label:'Phone'},{id:'r-prog',key:'program',label:'Loyalty Program'}], cols:['name','phone','program'], colLabels:['Airline','Phone','Program'], newRec:()=>({name:'',phone:'',program:''}) },
+  airports:      { label:'Airports',              icon:'🛬', refKey:'airports',     valueKey:'code',  simple:false, fields:[{id:'r-code',key:'code',label:'Airport Code (e.g. SFO)',req:true},{id:'r-name',key:'name',label:'Airport Name'},{id:'r-state',key:'state',label:'State'}], cols:['code','name','state'], colLabels:['Code','Name','State'], newRec:()=>({code:'',name:'',state:''}) },
+  bookingAgents: { label:'Booking Agents',        icon:'🏢', refKey:'bookingAgents',valueKey:'name',  simple:false, fields:[{id:'r-name',key:'name',label:'Agency / Source',req:true},{id:'r-agent',key:'agentName',label:'Agent Name'},{id:'r-phone',key:'phone',label:'Phone'},{id:'r-web',key:'website',label:'Website'}], cols:['name','agentName','phone'], colLabels:['Agency','Agent','Phone'], newRec:()=>({name:'',agentName:'',phone:'',website:''}) },
+  carRentalCos:  { label:'Car Rental Companies',  icon:'🚗', refKey:'carRentalCos', valueKey:'name',  simple:false, fields:[{id:'r-name',key:'name',label:'Company Name',req:true},{id:'r-phone',key:'phone',label:'Toll-Free Phone'}], cols:['name','phone'], colLabels:['Company','Phone'], newRec:()=>({id:Date.now(),name:'',phone:''}) },
+  carTypes:      { label:'Car Types',             icon:'🚙', refKey:'carTypes',     valueKey:null,    simple:true,  newRec:()=>'' },
+  hotelChains:   { label:'Hotel Chains',          icon:'🏨', refKey:'hotelChains',  valueKey:'name',  simple:false, fields:[{id:'r-name',key:'name',label:'Chain Name',req:true},{id:'r-phone',key:'phone',label:'Toll-Free Phone'}], cols:['name','phone'], colLabels:['Chain','Phone'], newRec:()=>({id:Date.now(),name:'',phone:''}) },
+  hotels:        { label:'Hotels (Master List)',  icon:'🏩', refKey:'hotels',       valueKey:'name',  simple:false, fields:[{id:'r-name',key:'name',label:'Hotel Name',req:true},{id:'r-city',key:'city',label:'City'},{id:'r-state',key:'state',label:'State'},{id:'r-addr',key:'address',label:'Address'},{id:'r-zip',key:'zip',label:'Zip'},{id:'r-phone',key:'phone',label:'Phone'},{id:'r-phonex',key:'phoneSpecific',label:'Direct Phone'},{id:'r-fax',key:'fax',label:'Fax'},{id:'r-dir',key:'directions',label:'Directions / Notes',textarea:true}], cols:['name','city','state','phone'], colLabels:['Hotel','City','State','Phone'], newRec:()=>({id:Date.now(),name:'',city:'',state:'',address:'',zip:'',phone:'',phoneSpecific:'',fax:'',directions:''}) },
+  howPaid:       { label:'Payment Methods',       icon:'💳', refKey:'howPaid',      valueKey:null,    simple:true,  newRec:()=>'' },
+  cruiseLines:   { label:'Cruise Lines',          icon:'⛴',  refKey:'cruiseLines',  valueKey:'name',  simple:false, fields:[{id:'r-name',key:'name',label:'Cruise Line Name',req:true},{id:'r-phone',key:'phone',label:'Phone'},{id:'r-web',key:'website',label:'Website'}], cols:['name','phone','website'], colLabels:['Cruise Line','Phone','Website'], newRec:()=>({id:Date.now(),name:'',phone:'',website:''}) },
+  vehicleTypes:  { label:'Vehicle Types',         icon:'🚌', refKey:'vehicleTypes', valueKey:null,    simple:true,  newRec:()=>'' },
+  meals:         { label:'Meal Preferences',      icon:'🍽', refKey:'meals',        valueKey:null,    simple:true,  newRec:()=>'' },
+  priceTypes:    { label:'Price Types',           icon:'💰', refKey:'priceTypes',   valueKey:null,    simple:true,  newRec:()=>'' },
+  usage:         { label:'Transfer Usage Types',  icon:'🔄', refKey:'usage',        valueKey:null,    simple:true,  newRec:()=>'' },
+};
+
+// ── Reference List View ──────────────────────────────────────
+Views.ref_home = function() {
+  return `
+    <p style="font-size:14px;color:var(--muted);margin-bottom:20px">Click any list to view, add, edit, or delete records.</p>
+    <div class="ref-cards">
+      ${Object.entries(REF_CONFIGS).map(([key,cfg]) => {
+        const list = State.data.reference[cfg.refKey]||[];
+        return `<div class="ref-card" onclick="RefEdit.open('${key}')">
+          <div class="rc-icon">${cfg.icon}</div>
+          <div class="rc-title">${cfg.label}</div>
+          <div class="rc-count">${list.length} record${list.length!==1?'s':''}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+};
+
+Views.ref_list = function(key) {
+  const cfg = REF_CONFIGS[key];
+  if (!cfg) return '<div class="card"><p>Unknown list.</p></div>';
+  const rawList = State.data.reference[cfg.refKey]||[];
+  const sorted = rawList.map((item,i)=>({item,i}))
+    .sort((a,b)=>{
+      const va = cfg.simple ? a.item : (a.item[cfg.valueKey]||a.item[cfg.cols?.[0]]||'');
+      const vb = cfg.simple ? b.item : (b.item[cfg.valueKey]||b.item[cfg.cols?.[0]]||'');
+      return String(va).localeCompare(String(vb));
+    });
+
+  const addLabel = cfg.simple ? `Add to ${cfg.label}` : `Add ${cfg.label.replace(/s$/,'').replace(/ \(.*\)/,'')}`;
+
+  if (cfg.simple) {
+    return `
+      <button class="btn btn-secondary btn-sm" onclick="State.view='ref_home';App.render()" style="margin-bottom:16px">← Reference Data</button>
+      <button class="btn-add-comp" onclick="RefEdit.add('${key}')">+ ${addLabel}</button>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="trips-table">
+          <thead><tr><th>Value</th><th style="width:120px">Actions</th></tr></thead>
+          <tbody>
+          ${sorted.map(({item,i}) => `<tr style="cursor:default">
+            <td style="font-weight:500">${h(item)}</td>
+            <td><div class="component-actions">
+              <button class="btn-edit" onclick="RefEdit.edit('${key}',${i})">Edit</button>
+              <button class="btn-del" onclick="RefEdit.del('${key}',${i})">Del</button>
+            </div></td>
+          </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  return `
+    <button class="btn btn-secondary btn-sm" onclick="State.view='ref_home';App.render()" style="margin-bottom:16px">← Reference Data</button>
+    <button class="btn-add-comp" onclick="RefEdit.add('${key}')">+ ${addLabel}</button>
+    <div class="card" style="padding:0;overflow:hidden;overflow-x:auto">
+      <table class="trips-table">
+        <thead><tr>
+          ${cfg.colLabels.map(l=>`<th>${l}</th>`).join('')}
+          <th style="width:120px">Actions</th>
+        </tr></thead>
+        <tbody>
+        ${sorted.map(({item,i}) => `<tr style="cursor:default">
+          ${cfg.cols.map(c=>`<td>${h(item[c]||'')}</td>`).join('')}
+          <td><div class="component-actions">
+            <button class="btn-edit" onclick="RefEdit.edit('${key}',${i})">Edit</button>
+            <button class="btn-del" onclick="RefEdit.del('${key}',${i})">Del</button>
+          </div></td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px">${rawList.length} record${rawList.length!==1?'s':''}</p>`;
+};
+
+// ── Reference Edit CRUD ──────────────────────────────────────
+const RefEdit = {
+  _form(cfg, rec) {
+    if (cfg.simple) {
+      return `<div class="form-group">
+        <label>Value</label>
+        <input id="r-val" type="text" value="${h(rec||'')}">
+      </div>`;
+    }
+    return `<div class="form-grid">
+      ${cfg.fields.map(f => `
+        <div class="form-group ${f.textarea||f.wide?'full':''}">
+          <label>${f.label}${f.req?' <span style="color:var(--red)">*</span>':''}</label>
+          ${f.textarea
+            ? `<textarea id="${f.id}">${h(rec[f.key]||'')}</textarea>`
+            : `<input id="${f.id}" type="text" value="${h(rec[f.key]||'')}">`}
+        </div>`).join('')}
+    </div>`;
+  },
+
+  _read(cfg, rec) {
+    if (cfg.simple) return gv('#r-val');
+    cfg.fields.forEach(f => { rec[f.key] = gv('#'+f.id); });
+    return rec;
+  },
+
+  open(key) {
+    State.view = 'ref_list';
+    State.refKey = key;
+    App.render();
+  },
+
+  add(key, prefill) {
+    const cfg = REF_CONFIGS[key];
+    const blank = typeof cfg.newRec() === 'string' ? '' : cfg.newRec();
+    if (typeof blank === 'string' && prefill) {
+      // pre-fill string
+    }
+    if (prefill && typeof blank === 'object' && cfg.valueKey) {
+      blank[cfg.valueKey] = prefill;
+    }
+    const rec = typeof blank === 'string' ? (prefill||blank) : blank;
+    Modal.show(`Add to ${cfg.label}`, RefEdit._form(cfg, rec), 'Add', () => {
+      const result = RefEdit._read(cfg, typeof rec === 'string' ? {} : {...rec});
+      if (cfg.simple) {
+        if (!result.trim()) return;
+        State.data.reference[cfg.refKey].push(result.trim());
+      } else {
+        const reqField = cfg.fields.find(f=>f.req);
+        if (reqField && !result[reqField.key]?.trim()) {
+          alert(`${reqField.label} is required.`); return;
+        }
+        State.data.reference[cfg.refKey].push(result);
+      }
+      Modal.hide();
+      if (State.view==='ref_list') App.render_content();
+      App.saveData();
+    });
+    if (prefill && typeof blank === 'string') {
+      setTimeout(() => { const el=$('#r-val'); if(el) el.value=prefill; }, 50);
+    }
+  },
+
+  edit(key, idx) {
+    const cfg = REF_CONFIGS[key];
+    const rec = State.data.reference[cfg.refKey][idx];
+    Modal.show(`Edit ${cfg.label.replace(/s$/,'').replace(/ \(.*\)/,'')}`, RefEdit._form(cfg, rec), 'Save', () => {
+      const result = RefEdit._read(cfg, typeof rec === 'object' ? rec : {});
+      if (cfg.simple) {
+        if (!result.trim()) return;
+        State.data.reference[cfg.refKey][idx] = result.trim();
+      } else {
+        const reqField = cfg.fields.find(f=>f.req);
+        if (reqField && !result[reqField.key]?.trim()) {
+          alert(`${reqField.label} is required.`); return;
+        }
+        // fields written in-place via _read for objects
+      }
+      Modal.hide();
+      if (State.view==='ref_list') App.render_content();
+      App.saveData();
+    });
+  },
+
+  del(key, idx) {
+    const cfg = REF_CONFIGS[key];
+    const rec = State.data.reference[cfg.refKey][idx];
+    const label = cfg.simple ? `"${rec}"` : `"${rec[cfg.valueKey||cfg.cols[0]]||'this record'}"`;
+    if (!confirm(`Delete ${label} from ${cfg.label}? This cannot be undone.`)) return;
+    State.data.reference[cfg.refKey].splice(idx, 1);
+    if (State.view==='ref_list') App.render_content();
+    App.saveData();
+  },
+};
+
+// ── "Not in list? Add it" prompt ────────────────────────────
+// Maps datalist input IDs → reference key
+const DATALIST_REF_MAP = {
+  'fs-airline':      'airlines',
+  'fs-dcity':        'airports',
+  'fs-acity':        'airports',
+  'f-bookedthrough': 'bookingAgents',
+  'f-company':       'carRentalCos',
+  'f-cartype':       'carTypes',
+  'f-name':          'hotels',
+  'f-ship':          'cruiseLines',
+};
+
+document.addEventListener('blur', e => {
+  const el = e.target;
+  if (!el.list) return;
+  const refKey = DATALIST_REF_MAP[el.id];
+  if (!refKey || !State.data) return;
+  const val = el.value.trim();
+  if (!val) return;
+  const cfg = REF_CONFIGS[refKey];
+  const list = State.data.reference[cfg.refKey]||[];
+  const exists = cfg.simple
+    ? list.some(v => v.toLowerCase()===val.toLowerCase())
+    : list.some(r => String(r[cfg.valueKey]||'').toLowerCase()===val.toLowerCase());
+  if (exists) {
+    el.parentNode.querySelectorAll('.add-ref-prompt').forEach(p=>p.remove());
+    return;
+  }
+  // Remove old prompt on this input
+  el.parentNode.querySelectorAll('.add-ref-prompt').forEach(p=>p.remove());
+  const prompt = document.createElement('div');
+  prompt.className = 'add-ref-prompt';
+  const safeVal = val.replace(/"/g,'&quot;').replace(/'/g,"\\'");
+  prompt.innerHTML = `<strong>"${h(val)}" is not in ${cfg.label}.</strong>
+    <button class="atp-yes" onclick="RefEdit.add('${refKey}','${safeVal}');this.closest('.add-ref-prompt').remove()">+ Add to list</button>
+    <button class="atp-no" onclick="this.closest('.add-ref-prompt').remove()">Ignore</button>`;
+  el.parentNode.appendChild(prompt);
+}, true);
 
 // ══════════════════════════════════════════════════════════════
 //  PRINT
