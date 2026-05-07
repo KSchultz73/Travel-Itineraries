@@ -1060,7 +1060,8 @@ const Views = {
             </div>
           </div>
           <div class="seat-class">
-            ${s.seatNo ? `<strong>Seat ${h(s.seatNo)}</strong>` : ''}
+            ${s.passengerName ? `<strong>${h(s.passengerName)}</strong>` : ''}
+            ${s.seatNo ? `<span>Seat ${h(s.seatNo)}</span>` : ''}
             <span>${h(s.class||'')}</span>
           </div>
           <div class="component-actions">
@@ -1592,16 +1593,57 @@ function find_itin(id) { return State.data.itineraries.find(i=>i.id===id); }
 function ref_opts(list, valKey, labelKey) {
   return list.map(x=>`<option value="${h(x[valKey]||x)}">${h(x[labelKey]||x[valKey]||x)}</option>`).join('');
 }
-function how_paid_opts() {
+function how_paid_opts(cur) {
   const opts = State.data.reference.howPaid||[];
-  return opts.map(o=>`<option value="${h(o)}">${h(o)}</option>`).join('');
+  return opts.map(o=>`<option value="${h(o)}" ${o===cur?'selected':''}>${h(o)}</option>`).join('');
 }
-function price_per_opts() {
-  return ['Day','Night','Week','Trip','Person'].map(o=>`<option value="${o}">${o}</option>`).join('');
+function price_per_opts(cur) {
+  return (State.data.reference.priceTypes||['Day','Night','Week','Trip','Person'])
+    .map(o=>`<option value="${h(o)}" ${o===cur?'selected':''}>${h(o)}</option>`).join('');
 }
 function sel(id, val) {
   const el = $(id); if(!el||val==null) return;
   [...el.options].forEach(o=>{ o.selected = o.value===String(val); });
+}
+// datalist helpers — return <option> tags for <datalist> elements
+function dl_airlines() {
+  return (State.data.reference.airlines||[])
+    .map(a=>`<option value="${h(a.name)}">${h(a.name)}${a.program?' — '+h(a.program):''}</option>`).join('');
+}
+function dl_airports() {
+  return (State.data.reference.airports||[])
+    .map(a=>`<option value="${h(a.code)}">${h(a.code)} — ${h(a.name||'')}${a.state?', '+a.state:''}</option>`).join('');
+}
+function dl_agents() {
+  return (State.data.reference.bookingAgents||[])
+    .map(a=>`<option value="${h(a.name||'')}">`).join('');
+}
+function dl_car_cos() {
+  return (State.data.reference.carRentalCos||[])
+    .map(c=>`<option value="${h(c.name||'')}">`).join('');
+}
+function dl_car_types() {
+  return (State.data.reference.carTypes||[])
+    .map(t=>`<option value="${h(t)}">`).join('');
+}
+function dl_cruise_lines() {
+  return (State.data.reference.cruiseLines||[])
+    .map(c=>`<option value="${h(c.name||'')}">`).join('');
+}
+function dl_vehicle_types() {
+  return (State.data.reference.vehicleTypes||[])
+    .map(v=>`<option value="${h(v)}">`).join('');
+}
+function dl_hotels() {
+  return (State.data.reference.hotels||[]).filter(h2=>h2.name)
+    .sort((a,b)=>a.name.localeCompare(b.name))
+    .map(ho=>`<option value="${h(ho.name)}">`).join('');
+}
+function traveller_select(cur) {
+  return (State.data.travellers||[]).map(t=>{
+    const name = `${t.firstName} ${t.lastName}`;
+    return `<option value="${h(name)}" ${name===cur?'selected':''}>${h(name)}</option>`;
+  }).join('');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1655,8 +1697,10 @@ const Forms = {
         </div>
         <div class="form-group">
           <label>How Paid</label>
-          <input id="f-howpaid" type="text" list="howpaid-list" value="${h(f.howPaid||'')}">
-          <datalist id="howpaid-list">${how_paid_opts()}</datalist>
+          <select id="f-howpaid">
+            <option value="">— Select —</option>
+            ${how_paid_opts(f.howPaid)}
+          </select>
         </div>
         <div class="form-group">
           <label>Date Booked</label>
@@ -1664,7 +1708,8 @@ const Forms = {
         </div>
         <div class="form-group full">
           <label>Booked Through</label>
-          <input id="f-bookedthrough" type="text" value="${h(f.bookedThrough||'')}">
+          <input id="f-bookedthrough" type="text" list="agents-list" value="${h(f.bookedThrough||'')}">
+          <datalist id="agents-list">${dl_agents()}</datalist>
         </div>
         <div class="form-group full">
           <label>Comments</label>
@@ -1675,10 +1720,19 @@ const Forms = {
 
   segment(s) {
     return `
+      <datalist id="airline-list">${dl_airlines()}</datalist>
+      <datalist id="airport-list">${dl_airports()}</datalist>
       <div class="form-grid">
+        <div class="form-group full">
+          <label>Passenger</label>
+          <select id="fs-passenger">
+            <option value="">— Select passenger —</option>
+            ${traveller_select(s.passengerName)}
+          </select>
+        </div>
         <div class="form-group">
           <label>Airline</label>
-          <input id="fs-airline" type="text" value="${h(s.airline||'')}">
+          <input id="fs-airline" type="text" list="airline-list" value="${h(s.airline||'')}">
         </div>
         <div class="form-group">
           <label>Flight #</label>
@@ -1689,8 +1743,8 @@ const Forms = {
           <input id="fs-ddate" type="date" value="${s.departDate||''}">
         </div>
         <div class="form-group">
-          <label>Depart City</label>
-          <input id="fs-dcity" type="text" value="${h(s.departCity||'')}">
+          <label>Depart Airport</label>
+          <input id="fs-dcity" type="text" list="airport-list" placeholder="e.g. SFO" value="${h(s.departCity||'')}">
         </div>
         <div class="form-group">
           <label>Depart Time</label>
@@ -1707,8 +1761,8 @@ const Forms = {
           <input id="fs-adate" type="date" value="${s.arriveDate||''}">
         </div>
         <div class="form-group">
-          <label>Arrive City</label>
-          <input id="fs-acity" type="text" value="${h(s.arriveCity||'')}">
+          <label>Arrive Airport</label>
+          <input id="fs-acity" type="text" list="airport-list" placeholder="e.g. JFK" value="${h(s.arriveCity||'')}">
         </div>
         <div class="form-group">
           <label>Arrive Time</label>
@@ -1723,10 +1777,12 @@ const Forms = {
 
   hotel(ho) {
     return `
+      <datalist id="hotel-list">${dl_hotels()}</datalist>
+      <datalist id="agents-list">${dl_agents()}</datalist>
       <div class="form-grid">
         <div class="form-group full">
           <label>Hotel Name</label>
-          <input id="f-name" type="text" value="${h(ho.hotelName||'')}">
+          <input id="f-name" type="text" list="hotel-list" value="${h(ho.hotelName||'')}">
         </div>
         <div class="form-group">
           <label>City</label>
@@ -1766,7 +1822,11 @@ const Forms = {
         </div>
         <div class="form-group">
           <label>Price Per</label>
-          <select id="f-priceper">${price_per_opts()}</select>
+          <select id="f-priceper"><option value="">—</option>${price_per_opts(ho.pricePer)}</select>
+        </div>
+        <div class="form-group">
+          <label>How Paid</label>
+          <select id="f-howpaid"><option value="">—</option>${how_paid_opts(ho.howPaid)}</select>
         </div>
         <div class="form-group">
           <label>Date Booked</label>
@@ -1774,7 +1834,7 @@ const Forms = {
         </div>
         <div class="form-group full">
           <label>Booked Through</label>
-          <input id="f-bookedthrough" type="text" value="${h(ho.bookedThrough||'')}">
+          <input id="f-bookedthrough" type="text" list="agents-list" value="${h(ho.bookedThrough||'')}">
         </div>
         <div class="form-group full">
           <label>Comments</label>
@@ -1784,17 +1844,18 @@ const Forms = {
   },
 
   car(c) {
-    const cos = State.data.reference.carRentalCos||[];
     return `
+      <datalist id="co-list">${dl_car_cos()}</datalist>
+      <datalist id="cartype-list">${dl_car_types()}</datalist>
+      <datalist id="agents-list">${dl_agents()}</datalist>
       <div class="form-grid">
         <div class="form-group">
           <label>Rental Company</label>
           <input id="f-company" type="text" list="co-list" value="${h(c.company||'')}">
-          <datalist id="co-list">${cos.map(x=>`<option value="${h(x.name||'')}">`).join('')}</datalist>
         </div>
         <div class="form-group">
           <label>Car Type</label>
-          <input id="f-cartype" type="text" value="${h(c.carType||'')}">
+          <input id="f-cartype" type="text" list="cartype-list" value="${h(c.carType||'')}">
         </div>
         <div class="form-group">
           <label>Confirmation #</label>
@@ -1806,7 +1867,11 @@ const Forms = {
         </div>
         <div class="form-group">
           <label>Price Per</label>
-          <select id="f-priceper">${price_per_opts()}</select>
+          <select id="f-priceper"><option value="">—</option>${price_per_opts(c.pricePer)}</select>
+        </div>
+        <div class="form-group">
+          <label>How Paid</label>
+          <select id="f-howpaid"><option value="">—</option>${how_paid_opts(c.howPaid)}</select>
         </div>
         <div class="form-group">
           <label>Date Booked</label>
@@ -1830,7 +1895,7 @@ const Forms = {
         </div>
         <div class="form-group full">
           <label>Booked Through</label>
-          <input id="f-bookedthrough" type="text" value="${h(c.bookedThrough||'')}">
+          <input id="f-bookedthrough" type="text" list="agents-list" value="${h(c.bookedThrough||'')}">
         </div>
         <div class="form-group full">
           <label>Comments</label>
@@ -1841,10 +1906,12 @@ const Forms = {
 
   cruise(c) {
     return `
+      <datalist id="cruiseline-list">${dl_cruise_lines()}</datalist>
+      <datalist id="agents-list">${dl_agents()}</datalist>
       <div class="form-grid">
         <div class="form-group full">
           <label>Ship Name</label>
-          <input id="f-ship" type="text" value="${h(c.shipName||'')}">
+          <input id="f-ship" type="text" list="cruiseline-list" value="${h(c.shipName||'')}">
         </div>
         <div class="form-group">
           <label>Reservation #</label>
@@ -1908,7 +1975,7 @@ const Forms = {
         </div>
         <div class="form-group full">
           <label>Booked Through</label>
-          <input id="f-bookedthrough" type="text" value="${h(c.bookedThrough||'')}">
+          <input id="f-bookedthrough" type="text" list="agents-list" value="${h(c.bookedThrough||'')}">
         </div>
         <div class="form-group full">
           <label>Comments</label>
@@ -2018,19 +2085,24 @@ const Edit = {
     App.render(); App.saveData();
   },
 
+  _read_seg(s) {
+    s.passengerName = gv('#fs-passenger')||null;
+    s.airline       = gv('#fs-airline');
+    s.flightNo      = gv('#fs-flightno');
+    s.departDate    = gv('#fs-ddate')||null;
+    s.departCity    = gv('#fs-dcity');
+    s.departTime    = gv('#fs-dtime')||null;
+    s.class         = gv('#fs-class');
+    s.arriveDate    = gv('#fs-adate')||null;
+    s.arriveCity    = gv('#fs-acity');
+    s.arriveTime    = gv('#fs-atime')||null;
+    s.seatNo        = gv('#fs-seat');
+  },
+
   add_segment(itinId, flightId) {
-    const blank = {airline:'',flightNo:'',departDate:'',departCity:'',departTime:'',class:'Coach',arriveDate:'',arriveCity:'',arriveTime:'',seatNo:''};
+    const blank = {passengerName:'',airline:'',flightNo:'',departDate:'',departCity:'',departTime:'',class:'Coach',arriveDate:'',arriveCity:'',arriveTime:'',seatNo:''};
     Modal.show('Add Flight Segment', Forms.segment(blank), 'Add', () => {
-      blank.airline    = gv('#fs-airline');
-      blank.flightNo   = gv('#fs-flightno');
-      blank.departDate = gv('#fs-ddate')||null;
-      blank.departCity = gv('#fs-dcity');
-      blank.departTime = gv('#fs-dtime')||null;
-      blank.class      = gv('#fs-class');
-      blank.arriveDate = gv('#fs-adate')||null;
-      blank.arriveCity = gv('#fs-acity');
-      blank.arriveTime = gv('#fs-atime')||null;
-      blank.seatNo     = gv('#fs-seat');
+      Edit._read_seg(blank);
       find_itin(itinId).flights.find(f=>f.id===flightId).segments.push(blank);
       Modal.hide(); App.render(); App.saveData();
     });
@@ -2040,16 +2112,7 @@ const Edit = {
     const f = find_itin(itinId).flights.find(x=>x.id===flightId);
     const s = f.segments[segIdx];
     Modal.show('Edit Flight Segment', Forms.segment(s), 'Save', () => {
-      s.airline    = gv('#fs-airline');
-      s.flightNo   = gv('#fs-flightno');
-      s.departDate = gv('#fs-ddate')||null;
-      s.departCity = gv('#fs-dcity');
-      s.departTime = gv('#fs-dtime')||null;
-      s.class      = gv('#fs-class');
-      s.arriveDate = gv('#fs-adate')||null;
-      s.arriveCity = gv('#fs-acity');
-      s.arriveTime = gv('#fs-atime')||null;
-      s.seatNo     = gv('#fs-seat');
+      Edit._read_seg(s);
       Modal.hide(); App.render(); App.saveData();
     });
   },
@@ -2092,6 +2155,7 @@ const Edit = {
     ho.roomType      = gv('#f-roomtype');
     ho.price         = gvn('#f-price');
     ho.pricePer      = gv('#f-priceper');
+    ho.howPaid       = gv('#f-howpaid');
     ho.dateBooked    = gv('#f-datebooked')||null;
     ho.bookedThrough = gv('#f-bookedthrough');
     ho.comments      = gv('#f-comments');
@@ -2127,6 +2191,7 @@ const Edit = {
     c.confirmationNo=gv('#f-conf');
     c.priceQuoted  = gvn('#f-price');
     c.pricePer     = gv('#f-priceper');
+    c.howPaid      = gv('#f-howpaid');
     c.dateBooked   = gv('#f-datebooked')||null;
     c.pickupDate   = gv('#f-pudate')||null;
     c.pickupTime   = gv('#f-putime')||null;
