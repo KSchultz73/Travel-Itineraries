@@ -1110,6 +1110,7 @@ const Views = {
           </div>
           <div class="component-actions">
             <button class="btn-edit" onclick="Edit.edit_segment(${itin.id},${f.id},${si})">Edit</button>
+            <button class="btn-edit" onclick="Edit.copy_segment(${itin.id},${f.id},${si})" title="Copy segment (clears passenger &amp; seat)">Copy</button>
             <button class="btn-del" onclick="Edit.delete_segment(${itin.id},${f.id},${si})">Del</button>
           </div>
         </div>`).join('');
@@ -1342,17 +1343,24 @@ const Views = {
   travellers() {
     const tv = State.data.travellers;
     return `
-      <div class="section-title">Travellers (${tv.length})</div>
+      <button class="btn-add-comp" onclick="Edit.add_traveller()">+ Add Traveller</button>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
-        ${tv.map(t => `
-          <div class="card">
-            <div style="font-size:16px;font-weight:700;margin-bottom:10px">👤 ${h(t.firstName)} ${h(t.lastName)}</div>
+        ${tv.map((t,idx) => `
+          <div class="card" style="position:relative">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+              <div style="font-size:16px;font-weight:700">👤 ${h(t.firstName)} ${h(t.lastName)}</div>
+              <div class="component-actions">
+                <button class="btn-edit" onclick="Edit.edit_traveller(${idx})">Edit</button>
+                <button class="btn-del" onclick="Edit.delete_traveller(${idx})">Del</button>
+              </div>
+            </div>
             ${[
               t.airportPref ? ['Home Airport', t.airportPref] : null,
               t.seatPref    ? ['Seat Pref',    t.seatPref]    : null,
               t.classPref   ? ['Class',        t.classPref]   : null,
               t.meal        ? ['Meal',         t.meal]        : null,
               t.airlinePref1? ['Airline 1',    t.airlinePref1]: null,
+              t.airlinePref2? ['Airline 2',    t.airlinePref2]: null,
               t.tsaPrecheck ? ['TSA Pre✓',     t.tsaPrecheck] : null,
             ].filter(Boolean).map(([l,v])=>`
               <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)">
@@ -1684,6 +1692,15 @@ function dl_hotels() {
     .sort((a,b)=>a.name.localeCompare(b.name))
     .map(ho=>`<option value="${h(ho.name)}">`).join('');
 }
+function hotelAutoFill(val) {
+  const ref = (State.data.reference.hotels||[]).find(r => r.name && r.name.toLowerCase() === val.toLowerCase());
+  if (!ref) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el && !el.dataset.userEdited) el.value = v || ''; };
+  set('f-city',  ref.city);
+  set('f-state', ref.state);
+  set('f-addr',  ref.address);
+  set('f-phone', ref.phone);
+}
 function traveller_select(cur) {
   return (State.data.travellers||[]).map(t=>{
     const name = `${t.firstName} ${t.lastName}`;
@@ -1827,10 +1844,10 @@ const Forms = {
       <div class="form-grid">
         <div class="form-group full">
           <label>Hotel Name</label>
-          <input id="f-name" type="text" list="hotel-list" value="${h(ho.hotelName||'')}">
+          <input id="f-name" type="text" list="hotel-list" value="${h(ho.hotelName||'')}" oninput="hotelAutoFill(this.value)">
         </div>
         <div class="form-group">
-          <label>City</label>
+          <label>City <span style="font-size:11px;color:var(--muted);font-weight:400">(auto-fills from list)</span></label>
           <input id="f-city" type="text" value="${h(ho.hotelCity||'')}">
         </div>
         <div class="form-group">
@@ -1838,11 +1855,11 @@ const Forms = {
           <input id="f-state" type="text" value="${h(ho.hotelState||'')}">
         </div>
         <div class="form-group full">
-          <label>Address</label>
+          <label>Address <span style="font-size:11px;color:var(--muted);font-weight:400">(auto-fills from list)</span></label>
           <input id="f-addr" type="text" value="${h(ho.hotelAddress||'')}">
         </div>
         <div class="form-group">
-          <label>Phone</label>
+          <label>Phone <span style="font-size:11px;color:var(--muted);font-weight:400">(auto-fills from list)</span></label>
           <input id="f-phone" type="text" value="${h(ho.hotelPhone||'')}">
         </div>
         <div class="form-group">
@@ -2066,6 +2083,60 @@ const Forms = {
         <textarea id="f-note" style="min-height:140px">${h(n.note||'')}</textarea>
       </div>`;
   },
+
+  traveller(t) {
+    const airports = (State.data.reference.airports||[]).map(a=>`<option value="${h(a.code)}">`).join('');
+    const airlines = (State.data.reference.airlines||[]).map(a=>`<option value="${h(a.name)}">`).join('');
+    const meals    = (State.data.reference.meals||[]).map(m=>`<option value="${h(m)}">`).join('');
+    return `
+      <datalist id="tv-airport-list">${airports}</datalist>
+      <datalist id="tv-airline-list">${airlines}</datalist>
+      <datalist id="tv-meal-list">${meals}</datalist>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>First Name <span style="color:var(--red)">*</span></label>
+          <input id="tv-first" type="text" value="${h(t.firstName||'')}">
+        </div>
+        <div class="form-group">
+          <label>Last Name <span style="color:var(--red)">*</span></label>
+          <input id="tv-last" type="text" value="${h(t.lastName||'')}">
+        </div>
+        <div class="form-group">
+          <label>Home Airport</label>
+          <input id="tv-airport" type="text" list="tv-airport-list" placeholder="e.g. EWR" value="${h(t.airportPref||'')}">
+        </div>
+        <div class="form-group">
+          <label>Preferred Seat</label>
+          <select id="tv-seat">
+            <option value="">—</option>
+            ${['Window','Aisle','Middle','No Preference'].map(v=>`<option${t.seatPref===v?' selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Class Preference</label>
+          <select id="tv-class">
+            <option value="">—</option>
+            ${['Coach','Business','First'].map(v=>`<option${t.classPref===v?' selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Meal Preference</label>
+          <input id="tv-meal" type="text" list="tv-meal-list" value="${h(t.meal||'')}">
+        </div>
+        <div class="form-group">
+          <label>Preferred Airline 1</label>
+          <input id="tv-air1" type="text" list="tv-airline-list" value="${h(t.airlinePref1||'')}">
+        </div>
+        <div class="form-group">
+          <label>Preferred Airline 2</label>
+          <input id="tv-air2" type="text" list="tv-airline-list" value="${h(t.airlinePref2||'')}">
+        </div>
+        <div class="form-group full">
+          <label>TSA Pre✓ / Known Traveler #</label>
+          <input id="tv-tsa" type="text" value="${h(t.tsaPrecheck||'')}">
+        </div>
+      </div>`;
+  },
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -2091,6 +2162,47 @@ const Edit = {
     if (!confirm(`Delete "${itin.title}"? This cannot be undone.`)) return;
     State.data.itineraries = State.data.itineraries.filter(i=>i.id!==id);
     Router.go('trips'); App.saveData();
+  },
+
+  // ── Travellers ───────────────────────────────────────────────
+  _read_traveller(t) {
+    t.firstName   = gv('#tv-first');
+    t.lastName    = gv('#tv-last');
+    t.airportPref = gv('#tv-airport')||null;
+    t.seatPref    = gv('#tv-seat')||null;
+    t.classPref   = gv('#tv-class')||null;
+    t.meal        = gv('#tv-meal')||null;
+    t.airlinePref1= gv('#tv-air1')||null;
+    t.airlinePref2= gv('#tv-air2')||null;
+    t.tsaPrecheck = gv('#tv-tsa')||null;
+  },
+
+  add_traveller() {
+    const blank = {id:Date.now(),firstName:'',lastName:'',airportPref:null,seatPref:null,classPref:null,meal:null,airlinePref1:null,airlinePref2:null,tsaPrecheck:null};
+    Modal.show('Add Traveller', Forms.traveller(blank), 'Add', () => {
+      Edit._read_traveller(blank);
+      if (!blank.firstName.trim() && !blank.lastName.trim()) { alert('First or last name is required.'); return; }
+      State.data.travellers.push(blank);
+      Modal.hide(); App.render_content(); App.saveData();
+    });
+  },
+
+  edit_traveller(idx) {
+    const t = State.data.travellers[idx];
+    const snap = {...t};
+    Modal.show('Edit Traveller', Forms.traveller(snap), 'Save', () => {
+      Edit._read_traveller(snap);
+      if (!snap.firstName.trim() && !snap.lastName.trim()) { alert('First or last name is required.'); return; }
+      Object.assign(State.data.travellers[idx], snap);
+      Modal.hide(); App.render_content(); App.saveData();
+    });
+  },
+
+  delete_traveller(idx) {
+    const t = State.data.travellers[idx];
+    if (!confirm(`Delete traveller "${t.firstName} ${t.lastName}"? This cannot be undone.`)) return;
+    State.data.travellers.splice(idx, 1);
+    App.render_content(); App.saveData();
   },
 
   // ── Flights ─────────────────────────────────────────────────
@@ -2166,6 +2278,14 @@ const Edit = {
     if (!confirm('Delete this flight segment?')) return;
     const f = find_itin(itinId).flights.find(x=>x.id===flightId);
     f.segments.splice(segIdx,1);
+    App.render(); App.saveData();
+  },
+
+  copy_segment(itinId, flightId, segIdx) {
+    const f = find_itin(itinId).flights.find(x=>x.id===flightId);
+    const orig = f.segments[segIdx];
+    const copy = {...orig, passengerName: '', seatNo: ''};
+    f.segments.splice(segIdx + 1, 0, copy);
     App.render(); App.saveData();
   },
 
