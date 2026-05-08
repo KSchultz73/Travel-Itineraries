@@ -1047,14 +1047,14 @@ const Views = {
     else if (tab === 'notes')     tabContent = Views._notes(itin);
 
     const visibleTabs = [
-      counts.flights    ? ['flights','✈ Flights',counts.flights] : null,
-      counts.hotels     ? ['hotels','🏨 Hotels',counts.hotels] : null,
-      counts.cars       ? ['cars','🚗 Cars',counts.cars] : null,
-      counts.cruises    ? ['cruises','⛴ Cruises',counts.cruises] : null,
-      counts.activities ? ['activities','🎯 Activities',counts.activities] : null,
-      counts.transfers  ? ['transfers','🚌 Transfers',counts.transfers] : null,
-      counts.notes      ? ['notes','📝 Notes',counts.notes] : null,
-    ].filter(Boolean);
+      ['flights',   '✈ Flights',    counts.flights],
+      ['hotels',    '🏨 Hotels',    counts.hotels],
+      ['cars',      '🚗 Cars',      counts.cars],
+      ['cruises',   '⛴ Cruises',   counts.cruises],
+      ['activities','🎯 Activities',counts.activities],
+      ['transfers', '🚌 Transfers', counts.transfers],
+      ['notes',     '📝 Notes',     counts.notes],
+    ];
     if (!visibleTabs.find(t=>t[0]===tab)) State.tripTab = visibleTabs[0]?.[0] || 'flights';
 
     return `
