@@ -1068,7 +1068,7 @@ const Views = {
         <div class="component-badges" style="margin-bottom:14px">${allBadges || '<span style="opacity:.6;font-size:13px">No components recorded</span>'}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-secondary btn-sm" onclick="Edit.trip(${itin.id})">✏️ Edit Trip</button>
-          <button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.3)" onclick="Print.show(${itin.id})">🖨️ Print / PDF</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.3)" onclick="Print.options(${itin.id})">🖨️ Print / PDF</button>
           <button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.3)" onclick="PrintCal.show(${itin.id})">📅 Day-by-Day</button>
           <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="Edit.delete_trip(${itin.id})">🗑 Delete Trip</button>
         </div>
@@ -2708,16 +2708,141 @@ document.addEventListener('blur', e => {
 //  PRINT
 // ══════════════════════════════════════════════════════════════
 const Print = {
-  show(id) {
+  options(id) {
+    const body = `
+      <p style="margin:0 0 16px;color:#475569">Choose what to include in the printed PDF:</p>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px">
+        <input type="checkbox" id="opt-costs" style="width:16px;height:16px">
+        <span><strong>Include cost summary</strong><br>
+        <span style="font-size:12px;color:#64748b">Adds a breakdown of flights, hotels, cars, cruises, and activities with a grand total</span></span>
+      </label>`;
+    Modal.show('Print Options', body, '🖨️ Print', () => {
+      const includeCosts = document.getElementById('opt-costs')?.checked || false;
+      Modal.hide();
+      Print.show(id, includeCosts);
+    });
+  },
+
+  show(id, includeCosts = false) {
     const itin = find_itin(id);
     const win = window.open('', '_blank');
-    win.document.write(Print._html(itin));
+    win.document.write(Print._html(itin, includeCosts));
     win.document.close();
     win.focus();
     setTimeout(() => win.print(), 400);
   },
 
-  _html(itin) {
+  _costs(itin) {
+    const days_between = (a, b) => a && b ? Math.round((new Date(b) - new Date(a)) / 86400000) : null;
+    const lines = [];
+    let grand = 0;
+
+    const section = (icon, label, items) => {
+      if (!items.length) return '';
+      const sub = items.reduce((s, x) => s + x.amt, 0);
+      grand += sub;
+      const rows = items.map(x =>
+        `<tr>
+          <td style="padding:4px 10px 4px 24px;color:#475569;font-size:12px">${x.label}</td>
+          <td style="padding:4px 10px;text-align:right;font-size:12px;white-space:nowrap">${x.note||''}</td>
+          <td style="padding:4px 10px;text-align:right;font-size:12px;font-weight:600;white-space:nowrap">${x.amt > 0 ? fmt_money(x.amt) : x.free || '—'}</td>
+        </tr>`).join('');
+      return `
+        <tr style="background:#f8fafc">
+          <td colspan="2" style="padding:8px 10px;font-weight:700;font-size:13px">${icon} ${label}</td>
+          <td style="padding:8px 10px;text-align:right;font-weight:700;font-size:13px">${sub > 0 ? fmt_money(sub) : '—'}</td>
+        </tr>
+        ${rows}`;
+    };
+
+    // ── Flights ──
+    const flightItems = itin.flights.map(f => {
+      const byPoints = /points|miles|award/i.test(f.howPaid||'');
+      const label = f.confirmationNo ? `Conf# ${h(f.confirmationNo)}` : (f.segments[0] ? `${f.segments[0].departCity||''} → ${f.segments[f.segments.length-1].arriveCity||''}` : 'Flight');
+      return { label, amt: byPoints ? 0 : (f.price || 0), free: byPoints ? 'Points/Miles' : null, note: f.howPaid && !byPoints ? h(f.howPaid) : (byPoints ? '' : '') };
+    });
+
+    // ── Hotels ──
+    const hotelItems = itin.hotels.map(ho => {
+      let amt = ho.price || 0;
+      let note = '';
+      if (ho.pricePer === 'Night' && ho.checkIn && ho.checkOut) {
+        const nights = days_between(ho.checkIn, ho.checkOut);
+        if (nights) { amt = (ho.price || 0) * nights; note = `${fmt_money(ho.price||0)}/night × ${nights}`; }
+      } else if (ho.pricePer && ho.pricePer !== 'Length of Stay') {
+        note = ho.pricePer;
+      }
+      return { label: h(ho.hotelName || 'Hotel') + (ho.hotelCity ? ` · ${h(ho.hotelCity)}` : ''), amt, note };
+    });
+
+    // ── Cars ──
+    const carItems = itin.rentalCars.map(c => {
+      let amt = c.priceQuoted || 0;
+      let note = '';
+      const days = days_between(c.pickupDate, c.dropOffDate);
+      if (c.pricePer === 'Day' && days) {
+        amt = (c.priceQuoted || 0) * days; note = `${fmt_money(c.priceQuoted||0)}/day × ${days}`;
+      } else if (c.pricePer === 'Week' && days) {
+        const wks = Math.ceil(days / 7); amt = (c.priceQuoted || 0) * wks; note = `${fmt_money(c.priceQuoted||0)}/week × ${wks}`;
+      } else if (c.pricePer) { note = c.pricePer; }
+      return { label: h(c.company || 'Car Rental') + (c.carType ? ` · ${h(c.carType)}` : ''), amt, note };
+    });
+
+    // ── Cruises ──
+    const cruiseItems = itin.cruises.map(c => {
+      let amt = 0, note = '';
+      if (c.totalPrice) {
+        amt = c.totalPrice; note = 'total';
+      } else if (c.price) {
+        const pax = (c.guest1 ? 1 : 0) + (c.guest2 ? 1 : 0) || 1;
+        amt = c.price * pax; note = pax > 1 ? `${fmt_money(c.price)}/person × ${pax}` : `${fmt_money(c.price)}/person`;
+      }
+      return { label: h(c.shipName || 'Cruise'), amt, note };
+    });
+
+    // ── Activities ──
+    const actItems = itin.activities.filter(a => a.price).map(a => ({
+      label: h(a.activity || 'Activity') + (a.date ? ` · ${fmt_date_short(a.date)}` : ''),
+      amt: a.price || 0, note: ''
+    }));
+
+    // ── Transfers ──
+    const xferItems = itin.groundTransfers.filter(t => t.priceQuoted).map(t => ({
+      label: h(t.vehicleType || 'Transfer') + (t.whenUsed ? ` · ${h(t.whenUsed)}` : ''),
+      amt: t.priceQuoted || 0, note: t.pricePer || ''
+    }));
+
+    const body = [
+      section('✈', 'Flights', flightItems),
+      section('🏨', 'Hotels', hotelItems),
+      section('🚗', 'Car Rentals', carItems),
+      section('⛴', 'Cruises', cruiseItems),
+      section('🎯', 'Activities', actItems),
+      section('🚌', 'Transfers', xferItems),
+    ].filter(Boolean).join('');
+
+    if (!body) return '';
+    return `
+      <div style="margin-bottom:24px;page-break-inside:avoid">
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b;border-bottom:2px solid #1e3a5f;padding-bottom:6px;margin-bottom:10px">💰 Cost Summary</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="background:#1e3a5f;color:white">
+            <th style="padding:7px 10px;text-align:left">Item</th>
+            <th style="padding:7px 10px;text-align:right">Rate / Notes</th>
+            <th style="padding:7px 10px;text-align:right;white-space:nowrap">Amount</th>
+          </tr></thead>
+          <tbody>${body}
+          <tr style="background:#1e3a5f;color:white">
+            <td colspan="2" style="padding:9px 10px;font-weight:800;font-size:14px">GRAND TOTAL</td>
+            <td style="padding:9px 10px;text-align:right;font-weight:800;font-size:14px">${fmt_money(grand)}</td>
+          </tr>
+          </tbody>
+        </table>
+        <p style="font-size:11px;color:#94a3b8;margin-top:6px">* Items paid by points/miles are counted as $0. Rate-based items are multiplied by duration.</p>
+      </div>`;
+  },
+
+  _html(itin, includeCosts = false) {
     const dur = itin.startDate && itin.endDate
       ? `${fmt_date(itin.startDate)} – ${fmt_date(itin.endDate)}`
       : fmt_date(itin.startDate);
@@ -2869,7 +2994,7 @@ const Print = {
           📅 ${dur}${dest?' &nbsp;·&nbsp; 📍 '+h(dest):''}
         </div>
       </div>
-      <div class="body">${sections.join('')}</div>
+      <div class="body">${sections.join('')}${includeCosts ? Print._costs(itin) : ''}</div>
     </body></html>`;
   },
 
