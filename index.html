@@ -47,6 +47,7 @@
     .badge-cruise  { background: #ede9fe; color: #5b21b6; }
     .badge-activity{ background: #fce7f3; color: #9d174d; }
     .badge-transfer{ background: #f1f5f9; color: #475569; }
+    .badge-train   { background: #ecfdf5; color: #065f46; }
     .chip {
       display: inline-flex; align-items: center; gap: 5px;
       padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500;
@@ -411,6 +412,12 @@
       padding: 14px 16px; font-size: 14px; line-height: 1.6; white-space: pre-wrap;
       margin-bottom: 10px;
     }
+
+    /* Train */
+    .train-card { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
+    .train-card-header { background: #ecfdf5; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; }
+    .train-card-header .name { font-size: 15px; font-weight: 700; }
+    .train-card-body { padding: 14px 18px; }
 
     /* Ground transfers */
     .transfer-card {
@@ -1011,6 +1018,7 @@ const Views = {
       cruises:   itin.cruises.length,
       activities:itin.activities.length,
       transfers: itin.groundTransfers.length,
+      trains:    (itin.trainTrips||[]).length,
       notes:     itin.notes.length,
     };
     const dur = itin.startDate && itin.endDate
@@ -1025,6 +1033,7 @@ const Views = {
       counts.cars       ? `<span class="badge badge-car">🚗 ${counts.cars} Car Rental${counts.cars>1?'s':''}</span>` : '',
       counts.cruises    ? `<span class="badge badge-cruise">⛴ ${counts.cruises} Cruise${counts.cruises>1?'s':''}</span>` : '',
       counts.activities ? `<span class="badge badge-activity">🎯 ${counts.activities} Activit${counts.activities>1?'ies':'y'}</span>` : '',
+      counts.trains     ? `<span class="badge badge-train">🚂 ${counts.trains} Train${counts.trains>1?'s':''}</span>` : '',
     ].filter(Boolean).join('');
 
     const tabs = [
@@ -1034,6 +1043,7 @@ const Views = {
       ['cruises','⛴ Cruises',counts.cruises],
       ['activities','🎯 Activities',counts.activities],
       ['transfers','🚌 Transfers',counts.transfers],
+      ['trains',   '🚂 Trains',   counts.trains],
       ['notes','📝 Notes',counts.notes],
     ].filter(([,, c]) => c > 0 || ['flights','hotels','notes'].includes(arguments[0]));
 
@@ -1044,6 +1054,7 @@ const Views = {
     else if (tab === 'cruises')   tabContent = Views._cruises(itin);
     else if (tab === 'activities')tabContent = Views._activities(itin);
     else if (tab === 'transfers') tabContent = Views._transfers(itin);
+    else if (tab === 'trains')    tabContent = Views._trains(itin);
     else if (tab === 'notes')     tabContent = Views._notes(itin);
 
     const visibleTabs = [
@@ -1053,6 +1064,7 @@ const Views = {
       ['cruises',   '⛴ Cruises',   counts.cruises],
       ['activities','🎯 Activities',counts.activities],
       ['transfers', '🚌 Transfers', counts.transfers],
+      ['trains',    '🚂 Trains',    counts.trains],
       ['notes',     '📝 Notes',     counts.notes],
     ];
     if (!visibleTabs.find(t=>t[0]===tab)) State.tripTab = visibleTabs[0]?.[0] || 'flights';
@@ -1299,12 +1311,19 @@ const Views = {
   },
 
   _transfers(itin) {
-    if (!itin.groundTransfers.length) return `<div class="empty-state"><div class="icon">🚌</div><p>No ground transfers recorded.</p></div>`;
-    return itin.groundTransfers.map(t => `
-      <div class="transfer-card">
+    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_transfer(${itin.id})">+ Add Transfer</button>`;
+    if (!itin.groundTransfers.length) return addBtn + `<div class="empty-state"><div class="icon">🚌</div><p>No ground transfers recorded.</p></div>`;
+    return addBtn + itin.groundTransfers.map((t, idx) => `
+      <div class="transfer-card" style="position:relative">
         <div class="transfer-card-header">
           <div class="name">${h(t.vehicleType||'Transfer')} ${t.whenUsed?'— '+t.whenUsed:''}</div>
-          ${t.priceQuoted ? `<div style="font-weight:700">${fmt_money(t.priceQuoted)}${t.pricePer?'/'+t.pricePer:''}</div>` : ''}
+          <div style="display:flex;align-items:center;gap:8px">
+            ${t.priceQuoted ? `<div style="font-weight:700">${fmt_money(t.priceQuoted)}${t.pricePer?'/'+t.pricePer:''}</div>` : ''}
+            <div class="component-actions">
+              <button class="btn-edit" onclick="Edit.edit_transfer(${itin.id},${idx})">Edit</button>
+              <button class="btn-del" onclick="Edit.delete_transfer(${itin.id},${idx})">Del</button>
+            </div>
+          </div>
         </div>
         <div class="transfer-card-body">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -1324,6 +1343,48 @@ const Views = {
           ${t.comments?`<div class="comments-block" style="margin-top:10px">${h(t.comments)}</div>`:''}
         </div>
       </div>`).join('');
+  },
+
+  _trains(itin) {
+    const trains = itin.trainTrips || [];
+    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_train(${itin.id})">+ Add Train Trip</button>`;
+    if (!trains.length) return addBtn + `<div class="empty-state"><div class="icon">🚂</div><p>No train trips recorded.</p></div>`;
+    return addBtn + trains.map((t, idx) => {
+      const route = [h(t.departStation||''), h(t.arriveStation||'')].filter(Boolean).join(' → ');
+      const price = t.price ? `${fmt_money(t.price)}${t.pricePer?'/'+t.pricePer:''}` : '';
+      return `
+      <div class="train-card" style="position:relative">
+        <div class="train-card-header">
+          <div class="name">🚂 ${h(t.trainOperator||'Train')}${t.trainNumber?' #'+h(t.trainNumber):''}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${price ? `<div style="font-weight:700">${price}</div>` : ''}
+            <div class="component-actions">
+              <button class="btn-edit" onclick="Edit.edit_train(${itin.id},${idx})">Edit</button>
+              <button class="btn-del" onclick="Edit.delete_train(${itin.id},${idx})">Del</button>
+            </div>
+          </div>
+        </div>
+        <div class="train-card-body">
+          ${route ? `<div style="font-size:16px;font-weight:700;margin-bottom:10px">${route}</div>` : ''}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="info-row">
+              <div class="lbl">Departs</div>
+              <div class="val">${fmt_date(t.departDate)}${t.departTime?' at '+fmt_time(t.departTime):''}</div>
+            </div>
+            <div class="info-row">
+              <div class="lbl">Arrives</div>
+              <div class="val">${fmt_date(t.arriveDate)}${t.arriveTime?' at '+fmt_time(t.arriveTime):''}</div>
+            </div>
+            ${t.confirmationNo?`<div class="info-row"><div class="lbl">Conf#</div><div class="val" style="font-weight:700">${h(t.confirmationNo)}</div></div>`:''}
+            ${t.classOfService?`<div class="info-row"><div class="lbl">Class</div><div class="val">${h(t.classOfService)}</div></div>`:''}
+            ${t.carNumber?`<div class="info-row"><div class="lbl">Car</div><div class="val">${h(t.carNumber)}</div></div>`:''}
+            ${t.seatNumber?`<div class="info-row"><div class="lbl">Seat</div><div class="val">${h(t.seatNumber)}</div></div>`:''}
+            ${t.passengers?`<div class="info-row"><div class="lbl">Passengers</div><div class="val">${t.passengers}</div></div>`:''}
+          </div>
+          ${t.comments?`<div class="comments-block" style="margin-top:10px">${h(t.comments)}</div>`:''}
+        </div>
+      </div>`;
+    }).join('');
   },
 
   _notes(itin) {
@@ -1603,7 +1664,7 @@ const App = {
       startDestination: $('#f-from').value.trim() || null,
       endDestination: $('#f-to').value.trim() || null,
       flights: [], hotels: [], rentalCars: [], cruises: [],
-      activities: [], groundTransfers: [], notes: [],
+      activities: [], groundTransfers: [], trainTrips: [], notes: [],
     };
     State.data.itineraries.unshift(trip);
     State.dirty = true;
@@ -2084,6 +2145,153 @@ const Forms = {
       </div>`;
   },
 
+  transfer(t) {
+    return `
+      <datalist id="vtype-list">${dl_vehicle_types()}</datalist>
+      <datalist id="agents-list">${dl_agents()}</datalist>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Vehicle Type</label>
+          <input id="f-vtype" type="text" list="vtype-list" value="${h(t.vehicleType||'')}">
+        </div>
+        <div class="form-group">
+          <label>When Used</label>
+          <input id="f-whenused" type="text" value="${h(t.whenUsed||'')}">
+        </div>
+        <div class="form-group">
+          <label>Confirmation #</label>
+          <input id="f-conf" type="text" value="${h(t.confirmationNo||'')}">
+        </div>
+        <div class="form-group">
+          <label>Price Quoted</label>
+          <input id="f-price" type="number" step="0.01" value="${t.priceQuoted!=null?t.priceQuoted:''}">
+        </div>
+        <div class="form-group">
+          <label>Price Per</label>
+          <select id="f-priceper"><option value="">—</option>${price_per_opts(t.pricePer)}</select>
+        </div>
+        <div class="form-group">
+          <label>How Paid</label>
+          <select id="f-howpaid"><option value="">—</option>${how_paid_opts(t.howPaid)}</select>
+        </div>
+        <div class="form-group">
+          <label>Pick-up Date</label>
+          <input id="f-pudate" type="date" value="${t.pickupDate||''}">
+        </div>
+        <div class="form-group">
+          <label>Pick-up Time</label>
+          <input id="f-putime" type="time" value="${t.pickupTime||''}">
+        </div>
+        <div class="form-group full">
+          <label>Pick-up Location</label>
+          <input id="f-puloc" type="text" value="${h(t.pickupLocation||'')}">
+        </div>
+        <div class="form-group">
+          <label>Drop-off Date</label>
+          <input id="f-dodate" type="date" value="${t.dropOffDate||''}">
+        </div>
+        <div class="form-group">
+          <label>Drop-off Time</label>
+          <input id="f-dotime" type="time" value="${t.dropOffTime||''}">
+        </div>
+        <div class="form-group full">
+          <label>Drop-off Location</label>
+          <input id="f-doloc" type="text" value="${h(t.dropOffLocation||'')}">
+        </div>
+        <div class="form-group">
+          <label>Passengers</label>
+          <input id="f-pax" type="number" step="1" value="${t.passengers!=null?t.passengers:''}">
+        </div>
+        <div class="form-group">
+          <label>Booked Through</label>
+          <input id="f-bookedthrough" type="text" list="agents-list" value="${h(t.bookedThrough||'')}">
+        </div>
+        <div class="form-group full">
+          <label>Comments</label>
+          <textarea id="f-comments">${h(t.comments||'')}</textarea>
+        </div>
+      </div>`;
+  },
+
+  train(t) {
+    return `
+      <datalist id="agents-list">${dl_agents()}</datalist>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Train Operator</label>
+          <input id="f-operator" type="text" placeholder="e.g. Amtrak, Eurostar" value="${h(t.trainOperator||'')}">
+        </div>
+        <div class="form-group">
+          <label>Train #</label>
+          <input id="f-trainnum" type="text" value="${h(t.trainNumber||'')}">
+        </div>
+        <div class="form-group">
+          <label>Confirmation #</label>
+          <input id="f-conf" type="text" value="${h(t.confirmationNo||'')}">
+        </div>
+        <div class="form-group">
+          <label>Class of Service</label>
+          <input id="f-class" type="text" placeholder="e.g. Business, Coach" value="${h(t.classOfService||'')}">
+        </div>
+        <div class="form-group full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+          <label>Departure Station</label>
+          <input id="f-depstation" type="text" value="${h(t.departStation||'')}">
+        </div>
+        <div class="form-group">
+          <label>Departure Date</label>
+          <input id="f-depdate" type="date" value="${t.departDate||''}">
+        </div>
+        <div class="form-group">
+          <label>Departure Time</label>
+          <input id="f-deptime" type="time" value="${t.departTime||''}">
+        </div>
+        <div class="form-group full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+          <label>Arrival Station</label>
+          <input id="f-arrstation" type="text" value="${h(t.arriveStation||'')}">
+        </div>
+        <div class="form-group">
+          <label>Arrival Date</label>
+          <input id="f-arrdate" type="date" value="${t.arriveDate||''}">
+        </div>
+        <div class="form-group">
+          <label>Arrival Time</label>
+          <input id="f-arrtime" type="time" value="${t.arriveTime||''}">
+        </div>
+        <div class="form-group">
+          <label>Car #</label>
+          <input id="f-carnum" type="text" value="${h(t.carNumber||'')}">
+        </div>
+        <div class="form-group">
+          <label>Seat #</label>
+          <input id="f-seatnum" type="text" value="${h(t.seatNumber||'')}">
+        </div>
+        <div class="form-group">
+          <label>Passengers</label>
+          <input id="f-pax" type="number" step="1" value="${t.passengers!=null?t.passengers:''}">
+        </div>
+        <div class="form-group">
+          <label>Price</label>
+          <input id="f-price" type="number" step="0.01" value="${t.price!=null?t.price:''}">
+        </div>
+        <div class="form-group">
+          <label>Price Per</label>
+          <select id="f-priceper"><option value="">—</option>${price_per_opts(t.pricePer)}</select>
+        </div>
+        <div class="form-group">
+          <label>How Paid</label>
+          <select id="f-howpaid"><option value="">—</option>${how_paid_opts(t.howPaid)}</select>
+        </div>
+        <div class="form-group full">
+          <label>Booked Through</label>
+          <input id="f-bookedthrough" type="text" list="agents-list" value="${h(t.bookedThrough||'')}">
+        </div>
+        <div class="form-group full">
+          <label>Comments</label>
+          <textarea id="f-comments">${h(t.comments||'')}</textarea>
+        </div>
+      </div>`;
+  },
+
   traveller(t) {
     const airports = (State.data.reference.airports||[]).map(a=>`<option value="${h(a.code)}">`).join('');
     const airlines = (State.data.reference.airlines||[]).map(a=>`<option value="${h(a.name)}">`).join('');
@@ -2475,6 +2683,117 @@ const Edit = {
     find_itin(itinId).notes.splice(idx,1);
     App.render(); App.saveData();
   },
+
+  // ── Ground Transfers ─────────────────────────────────────────
+  add_transfer(itinId) {
+    const blank = {id:Date.now(),vehicleType:'',whenUsed:'',confirmationNo:'',priceQuoted:null,pricePer:'',howPaid:'',bookedThrough:'',pickupDate:'',pickupTime:'',pickupLocation:'',dropOffDate:'',dropOffTime:'',dropOffLocation:'',passengers:null,comments:''};
+    Modal.show('Add Transfer', Forms.transfer(blank), 'Add', () => {
+      blank.vehicleType    = gv('#f-vtype');
+      blank.whenUsed       = gv('#f-whenused');
+      blank.confirmationNo = gv('#f-conf')||null;
+      blank.priceQuoted    = gvn('#f-price');
+      blank.pricePer       = gv('#f-priceper')||null;
+      blank.howPaid        = gv('#f-howpaid')||null;
+      blank.pickupDate     = gv('#f-pudate')||null;
+      blank.pickupTime     = gv('#f-putime')||null;
+      blank.pickupLocation = gv('#f-puloc');
+      blank.dropOffDate    = gv('#f-dodate')||null;
+      blank.dropOffTime    = gv('#f-dotime')||null;
+      blank.dropOffLocation= gv('#f-doloc');
+      blank.passengers     = gvn('#f-pax');
+      blank.bookedThrough  = gv('#f-bookedthrough');
+      blank.comments       = gv('#f-comments');
+      find_itin(itinId).groundTransfers.push(blank);
+      Modal.hide(); State.tripTab='transfers'; App.render(); App.saveData();
+    });
+  },
+
+  edit_transfer(itinId, idx) {
+    const t = find_itin(itinId).groundTransfers[idx];
+    Modal.show('Edit Transfer', Forms.transfer(t), 'Save', () => {
+      t.vehicleType    = gv('#f-vtype');
+      t.whenUsed       = gv('#f-whenused');
+      t.confirmationNo = gv('#f-conf')||null;
+      t.priceQuoted    = gvn('#f-price');
+      t.pricePer       = gv('#f-priceper')||null;
+      t.howPaid        = gv('#f-howpaid')||null;
+      t.pickupDate     = gv('#f-pudate')||null;
+      t.pickupTime     = gv('#f-putime')||null;
+      t.pickupLocation = gv('#f-puloc');
+      t.dropOffDate    = gv('#f-dodate')||null;
+      t.dropOffTime    = gv('#f-dotime')||null;
+      t.dropOffLocation= gv('#f-doloc');
+      t.passengers     = gvn('#f-pax');
+      t.bookedThrough  = gv('#f-bookedthrough');
+      t.comments       = gv('#f-comments');
+      Modal.hide(); App.render(); App.saveData();
+    });
+  },
+
+  delete_transfer(itinId, idx) {
+    if (!confirm('Delete this transfer?')) return;
+    find_itin(itinId).groundTransfers.splice(idx,1);
+    App.render(); App.saveData();
+  },
+
+  // ── Train Trips ──────────────────────────────────────────────
+  add_train(itinId) {
+    const blank = {id:Date.now(),trainOperator:'',trainNumber:'',confirmationNo:'',classOfService:'',departStation:'',departDate:'',departTime:'',arriveStation:'',arriveDate:'',arriveTime:'',carNumber:'',seatNumber:'',passengers:null,price:null,pricePer:'',howPaid:'',bookedThrough:'',comments:''};
+    Modal.show('Add Train Trip', Forms.train(blank), 'Add', () => {
+      blank.trainOperator  = gv('#f-operator');
+      blank.trainNumber    = gv('#f-trainnum');
+      blank.confirmationNo = gv('#f-conf')||null;
+      blank.classOfService = gv('#f-class');
+      blank.departStation  = gv('#f-depstation');
+      blank.departDate     = gv('#f-depdate')||null;
+      blank.departTime     = gv('#f-deptime')||null;
+      blank.arriveStation  = gv('#f-arrstation');
+      blank.arriveDate     = gv('#f-arrdate')||null;
+      blank.arriveTime     = gv('#f-arrtime')||null;
+      blank.carNumber      = gv('#f-carnum');
+      blank.seatNumber     = gv('#f-seatnum');
+      blank.passengers     = gvn('#f-pax');
+      blank.price          = gvn('#f-price');
+      blank.pricePer       = gv('#f-priceper')||null;
+      blank.howPaid        = gv('#f-howpaid')||null;
+      blank.bookedThrough  = gv('#f-bookedthrough');
+      blank.comments       = gv('#f-comments');
+      if (!find_itin(itinId).trainTrips) find_itin(itinId).trainTrips = [];
+      find_itin(itinId).trainTrips.push(blank);
+      Modal.hide(); State.tripTab='trains'; App.render(); App.saveData();
+    });
+  },
+
+  edit_train(itinId, idx) {
+    const t = (find_itin(itinId).trainTrips||[])[idx];
+    Modal.show('Edit Train Trip', Forms.train(t), 'Save', () => {
+      t.trainOperator  = gv('#f-operator');
+      t.trainNumber    = gv('#f-trainnum');
+      t.confirmationNo = gv('#f-conf')||null;
+      t.classOfService = gv('#f-class');
+      t.departStation  = gv('#f-depstation');
+      t.departDate     = gv('#f-depdate')||null;
+      t.departTime     = gv('#f-deptime')||null;
+      t.arriveStation  = gv('#f-arrstation');
+      t.arriveDate     = gv('#f-arrdate')||null;
+      t.arriveTime     = gv('#f-arrtime')||null;
+      t.carNumber      = gv('#f-carnum');
+      t.seatNumber     = gv('#f-seatnum');
+      t.passengers     = gvn('#f-pax');
+      t.price          = gvn('#f-price');
+      t.pricePer       = gv('#f-priceper')||null;
+      t.howPaid        = gv('#f-howpaid')||null;
+      t.bookedThrough  = gv('#f-bookedthrough');
+      t.comments       = gv('#f-comments');
+      Modal.hide(); App.render(); App.saveData();
+    });
+  },
+
+  delete_train(itinId, idx) {
+    if (!confirm('Delete this train trip?')) return;
+    find_itin(itinId).trainTrips.splice(idx,1);
+    App.render(); App.saveData();
+  },
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -2812,6 +3131,12 @@ const Print = {
       amt: t.priceQuoted || 0, note: t.pricePer || ''
     }));
 
+    // ── Trains ──
+    const trainItems = (itin.trainTrips||[]).filter(t => t.price).map(t => {
+      const route = [t.departStation, t.arriveStation].filter(Boolean).join(' → ');
+      return { label: h(t.trainOperator||'Train') + (route ? ` · ${h(route)}` : ''), amt: t.price || 0, note: t.pricePer || '' };
+    });
+
     const body = [
       section('✈', 'Flights', flightItems),
       section('🏨', 'Hotels', hotelItems),
@@ -2819,6 +3144,7 @@ const Print = {
       section('⛴', 'Cruises', cruiseItems),
       section('🎯', 'Activities', actItems),
       section('🚌', 'Transfers', xferItems),
+      section('🚂', 'Trains', trainItems),
     ].filter(Boolean).join('');
 
     if (!body) return '';
@@ -3128,6 +3454,15 @@ const PrintCal = {
       const to = t.dropOffLocation ? `To: ${h(t.dropOffLocation)}` : '';
       addEvent(t.pickupDate, t.pickupTime, '🚌', label,
         [from, to].filter(Boolean).join(' &nbsp;·&nbsp; '), 'transfer');
+    });
+
+    // ── Train Trips ──
+    (itin.trainTrips||[]).forEach(t => {
+      const label = `🚂 ${h(t.trainOperator||'Train')}${t.trainNumber?' #'+h(t.trainNumber):''}`;
+      const route = [t.departStation, t.arriveStation].filter(Boolean).map(s=>h(s)).join(' → ');
+      const conf = t.confirmationNo ? `Conf# ${h(t.confirmationNo)}` : '';
+      addEvent(t.departDate, t.departTime, '🚂', label,
+        [route, conf].filter(Boolean).join(' &nbsp;·&nbsp; '), 'transfer');
     });
 
     // ── Sort dates and events within each date ──
