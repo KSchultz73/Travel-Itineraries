@@ -471,6 +471,12 @@
     .btn-del:hover { background:#fee2e2; }
     .btn-add-comp { display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; margin-bottom:16px; }
     .btn-add-comp:hover { background:#dcfce7; }
+    .btn-import-comp { display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; background:#f5f3ff; color:#5b21b6; border:1px solid #ddd6fe; margin-bottom:16px; }
+    .btn-import-comp:hover { background:#ede9fe; }
+    .add-import-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .ai-drop-zone { border:2px dashed var(--border); border-radius:12px; padding:40px 20px; text-align:center; cursor:pointer; transition:background .2s; }
+    .ai-drop-zone:hover { background:#f8fafc; }
+    .ai-drop-zone.dragover { background:#eff6ff; border-color:var(--blue); }
 
     /* ── Modal ─────────────────────────────────────────── */
     .modal-overlay {
@@ -653,6 +659,9 @@
         <span>💾</span> Save to Dropbox
       </button>
       <div class="save-status" id="save-status">Auto-saves on changes</div>
+      <button onclick="AIImport.showKeySetup()" style="margin-top:8px;width:100%;padding:7px;border-radius:7px;font-size:12px;font-weight:600;background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.15);cursor:pointer" id="ai-key-btn">
+        🤖 AI Import Key
+      </button>
     </div>
   </div>
 
@@ -1102,7 +1111,7 @@ const Views = {
   },
 
   _flights(itin) {
-    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_flight(${itin.id})">+ Add Flight Booking</button>`;
+    const addBtn = `<div class="add-import-row"><button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_flight(${itin.id})">+ Add Flight Booking</button><button class="btn-import-comp" onclick="AIImport.importFlight(${itin.id})">📎 Import from Email / Doc</button></div><div style="margin-bottom:16px"></div>`;
     if (!itin.flights.length) return addBtn + `<div class="empty-state"><div class="icon">✈️</div><p>No flights recorded for this trip.</p></div>`;
     return addBtn + itin.flights.map(f => {
       const segs = f.segments.map((s,si) => `
@@ -1157,7 +1166,7 @@ const Views = {
   },
 
   _hotels(itin) {
-    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_hotel(${itin.id})">+ Add Hotel</button>`;
+    const addBtn = `<div class="add-import-row"><button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_hotel(${itin.id})">+ Add Hotel</button><button class="btn-import-comp" onclick="AIImport.importHotel(${itin.id})">📎 Import from Email / Doc</button></div><div style="margin-bottom:16px"></div>`;
     if (!itin.hotels.length) return addBtn + `<div class="empty-state"><div class="icon">🏨</div><p>No hotels recorded for this trip.</p></div>`;
     return addBtn + itin.hotels.map((ho, idx) => {
       const nights = ho.checkIn && ho.checkOut
@@ -1199,7 +1208,7 @@ const Views = {
   },
 
   _cars(itin) {
-    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_car(${itin.id})">+ Add Car Rental</button>`;
+    const addBtn = `<div class="add-import-row"><button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_car(${itin.id})">+ Add Car Rental</button><button class="btn-import-comp" onclick="AIImport.importCar(${itin.id})">📎 Import from Email / Doc</button></div><div style="margin-bottom:16px"></div>`;
     if (!itin.rentalCars.length) return addBtn + `<div class="empty-state"><div class="icon">🚗</div><p>No car rentals recorded for this trip.</p></div>`;
     return addBtn + itin.rentalCars.map((c, idx) => `
       <div class="car-card">
@@ -1235,7 +1244,7 @@ const Views = {
   },
 
   _cruises(itin) {
-    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_cruise(${itin.id})">+ Add Cruise</button>`;
+    const addBtn = `<div class="add-import-row"><button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_cruise(${itin.id})">+ Add Cruise</button></div><div style="margin-bottom:16px"></div>`;
     if (!itin.cruises.length) return addBtn + `<div class="empty-state"><div class="icon">⛴️</div><p>No cruises recorded for this trip.</p></div>`;
     return addBtn + itin.cruises.map((c, idx) => {
       const perksHtml = c.perks?.length ? `
@@ -1288,7 +1297,7 @@ const Views = {
   },
 
   _activities(itin) {
-    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_activity(${itin.id})">+ Add Activity</button>`;
+    const addBtn = `<div class="add-import-row"><button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_activity(${itin.id})">+ Add Activity</button><button class="btn-import-comp" onclick="AIImport.importActivity(${itin.id})">📎 Import from Email / Doc</button></div><div style="margin-bottom:16px"></div>`;
     if (!itin.activities.length) return addBtn + `<div class="empty-state"><div class="icon">🎯</div><p>No activities recorded for this trip.</p></div>`;
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     return addBtn + `<div class="activity-list">
@@ -1317,7 +1326,7 @@ const Views = {
   },
 
   _transfers(itin) {
-    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_transfer(${itin.id})">+ Add Transfer</button>`;
+    const addBtn = `<div class="add-import-row"><button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_transfer(${itin.id})">+ Add Transfer</button><button class="btn-import-comp" onclick="AIImport.importTransfer(${itin.id})">📎 Import from Email / Doc</button></div><div style="margin-bottom:16px"></div>`;
     if (!itin.groundTransfers.length) return addBtn + `<div class="empty-state"><div class="icon">🚌</div><p>No ground transfers recorded.</p></div>`;
     return addBtn + itin.groundTransfers.map((t, idx) => `
       <div class="transfer-card" style="position:relative">
@@ -1353,7 +1362,7 @@ const Views = {
 
   _trains(itin) {
     const trains = itin.trainTrips || [];
-    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_train(${itin.id})">+ Add Train Trip</button>`;
+    const addBtn = `<div class="add-import-row"><button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_train(${itin.id})">+ Add Train Trip</button><button class="btn-import-comp" onclick="AIImport.importTrain(${itin.id})">📎 Import from Email / Doc</button></div><div style="margin-bottom:16px"></div>`;
     if (!trains.length) return addBtn + `<div class="empty-state"><div class="icon">🚂</div><p>No train trips recorded.</p></div>`;
     return addBtn + trains.map((t, idx) => {
       const route = [h(t.departStation||''), h(t.arriveStation||'')].filter(Boolean).join(' → ');
@@ -2350,6 +2359,311 @@ const Forms = {
           <input id="tv-tsa" type="text" value="${h(t.tsaPrecheck||'')}">
         </div>
       </div>`;
+  },
+};
+
+// ══════════════════════════════════════════════════════════════
+//  AI IMPORT
+// ══════════════════════════════════════════════════════════════
+const AIImport = {
+  key:    () => localStorage.getItem('ai_api_key') || '',
+  setKey: (k) => localStorage.setItem('ai_api_key', k.trim()),
+
+  showKeySetup() {
+    const cur = AIImport.key();
+    Modal.show('AI Import — API Key', `
+      <p style="margin-bottom:14px;font-size:14px;color:var(--muted);line-height:1.5">
+        AI Import reads booking confirmation emails, screenshots, or PDFs using Claude AI
+        and pre-fills the form fields for you. You need a free Anthropic API key.
+      </p>
+      <div class="form-group">
+        <label>Anthropic API Key</label>
+        <input id="ai-key-input" type="password" placeholder="sk-ant-..." value="${h(cur)}" autocomplete="off">
+        <p class="hint" style="margin-top:6px">Get yours at <strong>console.anthropic.com</strong> → API Keys (free tier available)</p>
+      </div>
+      ${cur ? '<p style="font-size:13px;color:#166534;margin-top:4px">✓ Key is set</p>' : ''}`,
+    'Save', () => { AIImport.setKey(gv('#ai-key-input')); Modal.hide(); });
+  },
+
+  async _callClaude(file, userPrompt) {
+    const key = AIImport.key();
+    if (!key) throw new Error('No API key — click "AI Import Key" in the sidebar to set it.');
+    const base64 = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+    const isPDF  = file.type === 'application/pdf';
+    const isText = file.type.startsWith('text/');
+    let content;
+    if (isText) {
+      const txt = await file.text();
+      content = [{ type:'text', text: userPrompt + '\n\nDocument text:\n' + txt }];
+    } else if (isPDF) {
+      content = [
+        { type:'document', source:{ type:'base64', media_type:'application/pdf', data:base64 } },
+        { type:'text', text: userPrompt }
+      ];
+    } else {
+      content = [
+        { type:'image', source:{ type:'base64', media_type: file.type, data:base64 } },
+        { type:'text', text: userPrompt }
+      ];
+    }
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-allow-browser':'true'
+      },
+      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:1500, messages:[{ role:'user', content }] })
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(()=>({}));
+      throw new Error(err.error?.message || `API error ${resp.status}`);
+    }
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || '';
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('AI could not find booking data in that document.');
+    return JSON.parse(match[0]);
+  },
+
+  _showUploadModal(title, onFileFn) {
+    if (!AIImport.key()) {
+      if (confirm('An Anthropic API key is required for AI Import. Set it up now?')) AIImport.showKeySetup();
+      return;
+    }
+    Modal.show(title, `
+      <div class="ai-drop-zone" id="ai-dz"
+        ondragover="event.preventDefault();this.classList.add('dragover')"
+        ondragleave="this.classList.remove('dragover')"
+        ondrop="event.preventDefault();this.classList.remove('dragover');AIImport._handleDrop(event)">
+        <div style="font-size:40px;margin-bottom:10px">📎</div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:6px">Drop your booking confirmation here</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Screenshot, photo, PDF, or forwarded email text</div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ai-file-inp').click()">Choose File</button>
+        <input id="ai-file-inp" type="file" accept="image/*,.pdf,text/*,.eml" style="display:none"
+          onchange="AIImport._handleFile(this.files[0])">
+      </div>
+      <div id="ai-status" style="margin-top:12px;font-size:13px;text-align:center;min-height:20px"></div>`,
+      null, null);
+    $('#modal-actions').innerHTML = `<button class="btn btn-secondary" onclick="Modal.hide()">Cancel</button>`;
+    AIImport._pendingFn = onFileFn;
+  },
+
+  _pendingFn: null,
+
+  _handleDrop(e) {
+    const f = e.dataTransfer.files[0];
+    if (f) AIImport._handleFile(f);
+  },
+
+  async _handleFile(file) {
+    const status = $('#ai-status');
+    const dz = $('#ai-dz');
+    status.innerHTML = '<span style="color:var(--blue)">⏳ Reading with AI — this takes a few seconds…</span>';
+    if (dz) dz.style.pointerEvents = 'none';
+    try {
+      await AIImport._pendingFn(file);
+    } catch(e) {
+      status.innerHTML = `<span style="color:var(--red)">❌ ${h(e.message)}</span>`;
+      if (dz) dz.style.pointerEvents = '';
+    }
+  },
+
+  // ── Flight ──────────────────────────────────────────────────
+  importFlight(itinId) {
+    AIImport._showUploadModal('Import Flight Confirmation', async (file) => {
+      const d = await AIImport._callClaude(file,
+        `Extract flight booking details. Return ONLY valid JSON with this shape (use null for missing numbers, "" for missing strings, dates as YYYY-MM-DD, times as HH:MM 24h):
+{"confirmationNo":"","price":null,"bookedThrough":"","comments":"","segments":[{"airline":"","flightNo":"","departCity":"","departDate":"","departTime":"","arriveCity":"","arriveDate":"","arriveTime":"","class":"Coach","seatNo":""}]}`);
+      Modal.hide();
+      const blank = { id:Date.now(), confirmationNo:d.confirmationNo||'', price:d.price||null,
+        howPaid:'', dateBooked:'', bookedThrough:d.bookedThrough||'', comments:d.comments||'',
+        segments:(d.segments||[{airline:'',flightNo:'',departCity:'',departDate:'',departTime:'',arriveCity:'',arriveDate:'',arriveTime:'',class:'Coach',seatNo:''}]).map(s=>({
+          id:Date.now()+Math.random()|0, passengerName:'', airline:s.airline||'', flightNo:s.flightNo||'',
+          departCity:s.departCity||'', departDate:s.departDate||'', departTime:s.departTime||'',
+          arriveCity:s.arriveCity||'', arriveDate:s.arriveDate||'', arriveTime:s.arriveTime||'',
+          class:s.class||'Coach', seatNo:s.seatNo||''
+        }))
+      };
+      Modal.show('✅ Flight Booking — AI Pre-filled', Forms.flight(blank), 'Add', () => {
+        blank.confirmationNo = gv('#f-conf');
+        blank.price          = gvn('#f-price');
+        blank.howPaid        = gv('#f-howpaid')||null;
+        blank.dateBooked     = gv('#f-datebooked')||null;
+        blank.bookedThrough  = gv('#f-bookedthrough');
+        blank.comments       = gv('#f-comments');
+        find_itin(itinId).flights.push(blank);
+        Modal.hide(); State.tripTab='flights'; App.render(); App.saveData();
+      });
+    });
+  },
+
+  // ── Hotel ───────────────────────────────────────────────────
+  importHotel(itinId) {
+    AIImport._showUploadModal('Import Hotel Confirmation', async (file) => {
+      const d = await AIImport._callClaude(file,
+        `Extract hotel booking details. Return ONLY valid JSON (dates YYYY-MM-DD, null for missing numbers, "" for missing strings):
+{"hotelName":"","hotelCity":"","hotelState":"","hotelAddress":"","hotelPhone":"","confirmationNo":"","checkIn":"","checkOut":"","roomType":"","price":null,"pricePer":"Night","bookedThrough":"","comments":""}`);
+      Modal.hide();
+      const blank = { id:Date.now(), hotelName:d.hotelName||'', hotelCity:d.hotelCity||'',
+        hotelState:d.hotelState||'', hotelAddress:d.hotelAddress||'', hotelPhone:d.hotelPhone||'',
+        confirmationNo:d.confirmationNo||'', checkIn:d.checkIn||'', checkOut:d.checkOut||'',
+        roomType:d.roomType||'', price:d.price||null, pricePer:d.pricePer||'Night',
+        howPaid:'', dateBooked:'', bookedThrough:d.bookedThrough||'', comments:d.comments||'' };
+      Modal.show('✅ Hotel — AI Pre-filled', Forms.hotel(blank), 'Add', () => {
+        blank.hotelName     = gv('#f-name');
+        blank.hotelCity     = gv('#f-city');
+        blank.hotelState    = gv('#f-state');
+        blank.hotelAddress  = gv('#f-addr');
+        blank.hotelPhone    = gv('#f-phone');
+        blank.confirmationNo= gv('#f-conf');
+        blank.checkIn       = gv('#f-checkin')||null;
+        blank.checkOut      = gv('#f-checkout')||null;
+        blank.roomType      = gv('#f-roomtype');
+        blank.price         = gvn('#f-price');
+        blank.pricePer      = gv('#f-priceper')||null;
+        blank.howPaid       = gv('#f-howpaid')||null;
+        blank.dateBooked    = gv('#f-datebooked')||null;
+        blank.bookedThrough = gv('#f-bookedthrough');
+        blank.comments      = gv('#f-comments');
+        find_itin(itinId).hotels.push(blank);
+        Modal.hide(); State.tripTab='hotels'; App.render(); App.saveData();
+      });
+    });
+  },
+
+  // ── Car ─────────────────────────────────────────────────────
+  importCar(itinId) {
+    AIImport._showUploadModal('Import Car Rental Confirmation', async (file) => {
+      const d = await AIImport._callClaude(file,
+        `Extract car rental booking details. Return ONLY valid JSON (dates YYYY-MM-DD, times HH:MM, null for missing numbers, "" for missing strings):
+{"company":"","carType":"","confirmationNo":"","priceQuoted":null,"pricePer":"Rental Period","pickupDate":"","pickupTime":"","dropOffDate":"","dropOffTime":"","bookedThrough":"","comments":""}`);
+      Modal.hide();
+      const blank = { id:Date.now(), company:d.company||'', carType:d.carType||'',
+        confirmationNo:d.confirmationNo||'', priceQuoted:d.priceQuoted||null, pricePer:d.pricePer||'',
+        howPaid:'', dateBooked:'', pickupDate:d.pickupDate||'', pickupTime:d.pickupTime||'',
+        dropOffDate:d.dropOffDate||'', dropOffTime:d.dropOffTime||'',
+        bookedThrough:d.bookedThrough||'', comments:d.comments||'' };
+      Modal.show('✅ Car Rental — AI Pre-filled', Forms.car(blank), 'Add', () => {
+        blank.company        = gv('#f-company');
+        blank.carType        = gv('#f-cartype');
+        blank.confirmationNo = gv('#f-conf');
+        blank.priceQuoted    = gvn('#f-price');
+        blank.pricePer       = gv('#f-priceper')||null;
+        blank.howPaid        = gv('#f-howpaid')||null;
+        blank.dateBooked     = gv('#f-datebooked')||null;
+        blank.pickupDate     = gv('#f-pudate')||null;
+        blank.pickupTime     = gv('#f-putime')||null;
+        blank.dropOffDate    = gv('#f-dodate')||null;
+        blank.dropOffTime    = gv('#f-dotime')||null;
+        blank.bookedThrough  = gv('#f-bookedthrough');
+        blank.comments       = gv('#f-comments');
+        find_itin(itinId).rentalCars.push(blank);
+        Modal.hide(); State.tripTab='cars'; App.render(); App.saveData();
+      });
+    });
+  },
+
+  // ── Train ───────────────────────────────────────────────────
+  importTrain(itinId) {
+    AIImport._showUploadModal('Import Train Confirmation', async (file) => {
+      const d = await AIImport._callClaude(file,
+        `Extract train booking details. Return ONLY valid JSON (dates YYYY-MM-DD, times HH:MM 24h, null for missing numbers, "" for missing strings):
+{"trainOperator":"","trainNumber":"","confirmationNo":"","classOfService":"","departStation":"","departDate":"","departTime":"","arriveStation":"","arriveDate":"","arriveTime":"","carNumber":"","seatNumber":"","passengers":null,"price":null,"pricePer":"Person","bookedThrough":"","comments":""}`);
+      Modal.hide();
+      const blank = { id:Date.now(), trainOperator:d.trainOperator||'', trainNumber:d.trainNumber||'',
+        confirmationNo:d.confirmationNo||'', classOfService:d.classOfService||'',
+        departStation:d.departStation||'', departDate:d.departDate||'', departTime:d.departTime||'',
+        arriveStation:d.arriveStation||'', arriveDate:d.arriveDate||'', arriveTime:d.arriveTime||'',
+        carNumber:d.carNumber||'', seatNumber:d.seatNumber||'', passengers:d.passengers||null,
+        price:d.price||null, pricePer:d.pricePer||'', howPaid:'', bookedThrough:d.bookedThrough||'', comments:d.comments||'' };
+      Modal.show('✅ Train Trip — AI Pre-filled', Forms.train(blank), 'Add', () => {
+        blank.trainOperator  = gv('#f-operator');
+        blank.trainNumber    = gv('#f-trainnum');
+        blank.confirmationNo = gv('#f-conf')||null;
+        blank.classOfService = gv('#f-class');
+        blank.departStation  = gv('#f-depstation');
+        blank.departDate     = gv('#f-depdate')||null;
+        blank.departTime     = gv('#f-deptime')||null;
+        blank.arriveStation  = gv('#f-arrstation');
+        blank.arriveDate     = gv('#f-arrdate')||null;
+        blank.arriveTime     = gv('#f-arrtime')||null;
+        blank.carNumber      = gv('#f-carnum');
+        blank.seatNumber     = gv('#f-seatnum');
+        blank.passengers     = gvn('#f-pax');
+        blank.price          = gvn('#f-price');
+        blank.pricePer       = gv('#f-priceper')||null;
+        blank.howPaid        = gv('#f-howpaid')||null;
+        blank.bookedThrough  = gv('#f-bookedthrough');
+        blank.comments       = gv('#f-comments');
+        if (!find_itin(itinId).trainTrips) find_itin(itinId).trainTrips = [];
+        find_itin(itinId).trainTrips.push(blank);
+        Modal.hide(); State.tripTab='trains'; App.render(); App.saveData();
+      });
+    });
+  },
+
+  // ── Transfer ────────────────────────────────────────────────
+  importTransfer(itinId) {
+    AIImport._showUploadModal('Import Transfer Confirmation', async (file) => {
+      const d = await AIImport._callClaude(file,
+        `Extract ground transfer or car service booking details. Return ONLY valid JSON (dates YYYY-MM-DD, times HH:MM, null for missing numbers, "" for missing strings):
+{"vehicleType":"","whenUsed":"","confirmationNo":"","priceQuoted":null,"pricePer":"","pickupDate":"","pickupTime":"","pickupLocation":"","dropOffDate":"","dropOffTime":"","dropOffLocation":"","passengers":null,"bookedThrough":"","comments":""}`);
+      Modal.hide();
+      const blank = { id:Date.now(), vehicleType:d.vehicleType||'', whenUsed:d.whenUsed||'',
+        confirmationNo:d.confirmationNo||null, priceQuoted:d.priceQuoted||null, pricePer:d.pricePer||null,
+        howPaid:null, dateBooked:null, bookedThrough:d.bookedThrough||'',
+        pickupDate:d.pickupDate||null, pickupTime:d.pickupTime||null, pickupLocation:d.pickupLocation||'',
+        dropOffDate:d.dropOffDate||null, dropOffTime:d.dropOffTime||null, dropOffLocation:d.dropOffLocation||'',
+        passengers:d.passengers||null, comments:d.comments||'' };
+      Modal.show('✅ Transfer — AI Pre-filled', Forms.transfer(blank), 'Add', () => {
+        blank.vehicleType    = gv('#f-vtype');
+        blank.whenUsed       = gv('#f-whenused');
+        blank.confirmationNo = gv('#f-conf')||null;
+        blank.priceQuoted    = gvn('#f-price');
+        blank.pricePer       = gv('#f-priceper')||null;
+        blank.howPaid        = gv('#f-howpaid')||null;
+        blank.pickupDate     = gv('#f-pudate')||null;
+        blank.pickupTime     = gv('#f-putime')||null;
+        blank.pickupLocation = gv('#f-puloc');
+        blank.dropOffDate    = gv('#f-dodate')||null;
+        blank.dropOffTime    = gv('#f-dotime')||null;
+        blank.dropOffLocation= gv('#f-doloc');
+        blank.passengers     = gvn('#f-pax');
+        blank.bookedThrough  = gv('#f-bookedthrough');
+        blank.comments       = gv('#f-comments');
+        find_itin(itinId).groundTransfers.push(blank);
+        Modal.hide(); State.tripTab='transfers'; App.render(); App.saveData();
+      });
+    });
+  },
+
+  // ── Activity ────────────────────────────────────────────────
+  importActivity(itinId) {
+    AIImport._showUploadModal('Import Activity / Tour Confirmation', async (file) => {
+      const d = await AIImport._callClaude(file,
+        `Extract activity, tour, or event booking details. Return ONLY valid JSON (date YYYY-MM-DD, time HH:MM, null for missing numbers, "" for missing strings):
+{"activity":"","date":"","time":"","location":"","price":null,"comments":""}`);
+      Modal.hide();
+      const blank = { id:Date.now(), activity:d.activity||'', date:d.date||null,
+        time:d.time||null, location:d.location||'', price:d.price||null, comments:d.comments||'' };
+      Modal.show('✅ Activity — AI Pre-filled', Forms.activity(blank), 'Add', () => {
+        blank.activity = gv('#f-activity');
+        blank.date     = gv('#f-date')||null;
+        blank.time     = gv('#f-time')||null;
+        blank.location = gv('#f-location');
+        blank.price    = gvn('#f-price');
+        blank.comments = gv('#f-comments');
+        find_itin(itinId).activities.push(blank);
+        Modal.hide(); State.tripTab='activities'; App.render(); App.saveData();
+      });
+    });
   },
 };
 
