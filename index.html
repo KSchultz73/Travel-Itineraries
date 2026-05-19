@@ -456,6 +456,8 @@
     .btn-edit:hover { background:#dbeafe; }
     .btn-del   { padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600; background:#fef2f2; color:var(--red); border:1px solid #fecaca; }
     .btn-del:hover { background:#fee2e2; }
+    .btn-move  { padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+    .btn-move:hover { background:#dcfce7; }
     .btn-add-comp { display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; margin-bottom:16px; }
     .btn-add-comp:hover { background:#dcfce7; }
     .btn-ai-import { display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; background:#f5f3ff; color:#5b21b6; border:1px solid #ddd6fe; }
@@ -1145,6 +1147,7 @@ const Views = {
               <div>${f.price ? `<div class="price">${fmt_money(f.price)}</div>` : ''}${f.howPaid ? `<div class="meta">${h(f.howPaid)}</div>` : ''}</div>
               <div class="component-actions">
                 <button class="btn-edit" onclick="Edit.edit_flight(${itin.id},${f.id})">Edit</button>
+                <button class="btn-move" onclick="Edit.move_flight(${itin.id},${f.id})">Move</button>
                 <button class="btn-del" onclick="Edit.delete_flight(${itin.id},${f.id})">Del</button>
               </div>
             </div>
@@ -1178,6 +1181,7 @@ const Views = {
               <div>${ho.price ? `<div class="price">${fmt_money(ho.price)}${ho.pricePer?'/'+ho.pricePer:''}</div>` : ''}</div>
               <div class="component-actions">
                 <button class="btn-edit" onclick="Edit.edit_hotel(${itin.id},${idx})">Edit</button>
+                <button class="btn-move" onclick="Edit.move_component(${itin.id},'hotels',${idx})">Move</button>
                 <button class="btn-del" onclick="Edit.delete_hotel(${itin.id},${idx})">Del</button>
               </div>
             </div>
@@ -1220,6 +1224,7 @@ const Views = {
             <div>${c.priceQuoted ? `<div class="price">${fmt_money(c.priceQuoted)}${c.pricePer?'/'+c.pricePer:''}</div>` : ''}</div>
             <div class="component-actions">
               <button class="btn-edit" onclick="Edit.edit_car(${itin.id},${idx})">Edit</button>
+              <button class="btn-move" onclick="Edit.move_component(${itin.id},'rentalCars',${idx})">Move</button>
               <button class="btn-del" onclick="Edit.delete_car(${itin.id},${idx})">Del</button>
             </div>
           </div>
@@ -1265,6 +1270,7 @@ const Views = {
               <div>${c.totalPrice ? `<div class="price">${fmt_money(c.totalPrice)} total</div>` : (c.price?`<div class="price">${fmt_money(c.price)}/pp</div>`:'')}</div>
               <div class="component-actions">
                 <button class="btn-edit" onclick="Edit.edit_cruise(${itin.id},${idx})">Edit</button>
+                <button class="btn-move" onclick="Edit.move_component(${itin.id},'cruises',${idx})">Move</button>
                 <button class="btn-del" onclick="Edit.delete_cruise(${itin.id},${idx})">Del</button>
               </div>
             </div>
@@ -1320,6 +1326,7 @@ const Views = {
           <div class="price-box">${a.price ? fmt_money(a.price) : ''}</div>
           <div class="component-actions" style="flex-direction:column">
             <button class="btn-edit" onclick="Edit.edit_activity(${itin.id},${idx})">Edit</button>
+            <button class="btn-move" onclick="Edit.move_component(${itin.id},'activities',${idx})">Move</button>
             <button class="btn-del" onclick="Edit.delete_activity(${itin.id},${idx})">Del</button>
           </div>
         </div>`;
@@ -1341,6 +1348,7 @@ const Views = {
             ${t.priceQuoted ? `<div style="font-weight:700">${fmt_money(t.priceQuoted)}${t.pricePer?'/'+t.pricePer:''}</div>` : ''}
             <div class="component-actions">
               <button class="btn-edit" onclick="Edit.edit_transfer(${itin.id},${idx})">Edit</button>
+              <button class="btn-move" onclick="Edit.move_component(${itin.id},'groundTransfers',${idx})">Move</button>
               <button class="btn-del" onclick="Edit.delete_transfer(${itin.id},${idx})">Del</button>
             </div>
           </div>
@@ -1383,6 +1391,7 @@ const Views = {
             ${t.price?`<div style="font-weight:700">${fmt_money(t.price)}</div>`:''}
             <div class="component-actions">
               <button class="btn-edit" onclick="Edit.edit_train(${itin.id},${idx})">Edit</button>
+              <button class="btn-move" onclick="Edit.move_component(${itin.id},'trains',${idx})">Move</button>
               <button class="btn-del" onclick="Edit.delete_train(${itin.id},${idx})">Del</button>
             </div>
           </div>
@@ -2754,6 +2763,47 @@ const Edit = {
     App.render(); App.saveData();
   },
 
+  // ── Move component to another trip ──────────────────────────
+  _move_picker(onPick) {
+    const others = State.data.itineraries.filter(i => i.id !== State.tripId);
+    if (!others.length) { alert('No other trips to move to. Add another trip first.'); return; }
+    const opts = others.map(i => `<option value="${i.id}">${h(i.title)}${i.startDate?' ('+fmt_date(i.startDate)+')':''}</option>`).join('');
+    Modal.show('Move to Trip', `
+      <div class="form-group">
+        <label>Destination Trip</label>
+        <select id="move-dest">${opts}</select>
+      </div>`, 'Move', () => {
+      const destId = parseInt(gv('#move-dest'));
+      Modal.hide();
+      onPick(destId);
+    });
+  },
+
+  move_component(itinId, arrayKey, idx) {
+    this._move_picker(destId => {
+      const src  = find_itin(itinId);
+      const dest = find_itin(destId);
+      if (!src || !dest) return;
+      if (!dest[arrayKey]) dest[arrayKey] = [];
+      const [item] = src[arrayKey].splice(idx, 1);
+      dest[arrayKey].push(item);
+      App.render(); App.saveData();
+    });
+  },
+
+  move_flight(itinId, flightId) {
+    this._move_picker(destId => {
+      const src  = find_itin(itinId);
+      const dest = find_itin(destId);
+      if (!src || !dest) return;
+      const idx = src.flights.findIndex(f => f.id === flightId);
+      if (idx === -1) return;
+      const [item] = src.flights.splice(idx, 1);
+      dest.flights.push(item);
+      App.render(); App.saveData();
+    });
+  },
+
   // ── Notes ───────────────────────────────────────────────────
   add_note(itinId) {
     const blank = {id:Date.now(), note:''};
@@ -3288,9 +3338,12 @@ const Print = {
         .section { margin-bottom:24px; page-break-inside:avoid; }
         .section-title { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#64748b; border-bottom:2px solid #e2e8f0; padding-bottom:6px; margin-bottom:12px; }
         table { border-collapse:collapse; }
-        @media print { body { font-size:12px; } .header { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+        @media print { body { font-size:12px; } .header { -webkit-print-color-adjust:exact; print-color-adjust:exact; } .no-print { display:none !important; } }
       </style>
     </head><body>
+      <div class="no-print" style="padding:12px 20px;background:#f8fafc;border-bottom:1px solid #e2e8f0;margin-bottom:16px">
+        <button onclick="window.close()" style="padding:6px 14px;border:1px solid #cbd5e1;border-radius:6px;background:white;cursor:pointer;font-size:13px">← Close &amp; Return to App</button>
+      </div>
       <div class="header">
         <h1>${h(itin.title)}</h1>
         <div class="meta">
@@ -3504,9 +3557,13 @@ const PrintCal = {
           .ev-hotel-in td, .ev-hotel-out td, .ev-hotel-mid td,
           .ev-cruise td, .ev-cruise-mid td, .ev-flight td,
           .ev-activity td, .ev-transfer td, .ev-car-mid td { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+          .no-print { display:none !important; }
         }
       </style>
     </head><body>
+      <div class="no-print" style="padding:12px 20px;background:#f8fafc;border-bottom:1px solid #e2e8f0;margin-bottom:16px">
+        <button onclick="window.close()" style="padding:6px 14px;border:1px solid #cbd5e1;border-radius:6px;background:white;cursor:pointer;font-size:13px">← Close &amp; Return to App</button>
+      </div>
       <div class="header">
         <h1>${h(itin.title)}</h1>
         <div class="meta">📅 ${dur}${dest ? ' &nbsp;·&nbsp; 📍 ' + h(dest) : ''}</div>
