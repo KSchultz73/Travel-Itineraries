@@ -3238,8 +3238,10 @@ const PrintCal = {
 const AIImport = {
   _itinId: null,
 
-  getKey()    { return localStorage.getItem('anthropic_api_key') || ''; },
-  setKey(k)   { k ? localStorage.setItem('anthropic_api_key', k.trim()) : localStorage.removeItem('anthropic_api_key'); },
+  getKey()      { return localStorage.getItem('anthropic_api_key') || ''; },
+  setKey(k)     { k ? localStorage.setItem('anthropic_api_key', k.trim()) : localStorage.removeItem('anthropic_api_key'); },
+  getProxy()    { return localStorage.getItem('anthropic_proxy_url') || 'https://api.anthropic.com/v1/messages'; },
+  setProxy(u)   { u ? localStorage.setItem('anthropic_proxy_url', u.trim().replace(/\/$/, '')) : localStorage.removeItem('anthropic_proxy_url'); },
 
   show(itinId) {
     this._itinId = itinId;
@@ -3248,19 +3250,30 @@ const AIImport = {
   },
 
   showKeySettings() {
+    const hasKey   = !!this.getKey();
+    const proxyVal = localStorage.getItem('anthropic_proxy_url') || '';
     const body = `
       <div class="form-group">
         <label>Anthropic API Key</label>
         <input id="ai-key-input" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false"
-          value="${this.getKey() ? '••••••••••••' : ''}">
-        <p class="hint">Stored only in your browser's localStorage — sent only to Anthropic when importing.</p>
+          value="${hasKey ? '••••••••••••' : ''}">
+        <p class="hint">Stored only in your browser — never shared with anyone except Anthropic.</p>
       </div>
-      ${this.getKey() ? '<button class="btn btn-danger btn-sm" onclick="AIImport.setKey(\'\');Modal.hide();alert(\'API key cleared.\')">Clear saved key</button>' : ''}`;
-    Modal.show('AI API Key', body, 'Save', () => {
-      const v = document.getElementById('ai-key-input')?.value.trim();
-      if (!v || v.startsWith('•')) { Modal.hide(); return; }
-      if (!v.startsWith('sk-')) { alert('That doesn\'t look like a valid Anthropic API key (should start with sk-).'); return; }
-      this.setKey(v);
+      <div class="form-group">
+        <label>Proxy URL <span style="font-size:11px;color:var(--muted);font-weight:400">(required — see setup instructions)</span></label>
+        <input id="ai-proxy-input" type="url" placeholder="https://anthropic-proxy.your-name.workers.dev"
+          value="${h(proxyVal)}" autocomplete="off" spellcheck="false">
+        <p class="hint">Your Cloudflare Worker URL. Needed because browsers can't call Anthropic directly.</p>
+      </div>
+      ${hasKey ? '<button class="btn btn-danger btn-sm" onclick="AIImport.setKey(\'\');AIImport.setProxy(\'\');Modal.hide();alert(\'Settings cleared.\')">Clear all settings</button>' : ''}`;
+    Modal.show('AI Import Settings', body, 'Save', () => {
+      const k = document.getElementById('ai-key-input')?.value.trim();
+      const p = document.getElementById('ai-proxy-input')?.value.trim();
+      if (k && !k.startsWith('•')) {
+        if (!k.startsWith('sk-')) { alert('That doesn\'t look like a valid API key (should start with sk-).'); return; }
+        this.setKey(k);
+      }
+      this.setProxy(p);
       Modal.hide();
     });
   },
@@ -3370,7 +3383,7 @@ const AIImport = {
       ];
     }
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch(this.getProxy(), {
       method: 'POST',
       headers: {
         'x-api-key': key,
