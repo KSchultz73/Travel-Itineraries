@@ -458,6 +458,15 @@
     .btn-del:hover { background:#fee2e2; }
     .btn-add-comp { display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; margin-bottom:16px; }
     .btn-add-comp:hover { background:#dcfce7; }
+    .btn-ai-import { display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; background:#f5f3ff; color:#5b21b6; border:1px solid #ddd6fe; }
+    .btn-ai-import:hover { background:#ede9fe; }
+    .drop-zone { border:2px dashed #c4b5fd; border-radius:12px; padding:36px 24px; text-align:center; cursor:pointer; transition:border-color .15s,background .15s; margin-bottom:12px; }
+    .drop-zone:hover, .drop-zone.dragging { border-color:#7c3aed; background:#f5f3ff; }
+    .drop-zone .dz-icon { font-size:40px; margin-bottom:10px; }
+    .drop-zone .dz-title { font-weight:600; font-size:15px; margin-bottom:4px; }
+    .drop-zone .dz-sub { font-size:13px; color:var(--muted); }
+    .ai-status { padding:8px 0; font-size:13px; display:flex; align-items:center; gap:8px; }
+    .ai-status.err { color:var(--red); }
 
     /* ── Modal ─────────────────────────────────────────── */
     .modal-overlay {
@@ -633,6 +642,10 @@
       </button>
       <button class="nav-item" onclick="Router.goRef('cruiseLines')" data-view="ref_home">
         <span class="icon">⛴</span> Cruise Lines
+      </button>
+      <div class="nav-section" style="margin-top:4px">AI</div>
+      <button class="nav-item" onclick="AIImport.showKeySettings()">
+        <span class="icon">🔑</span> AI API Key
       </button>
     </nav>
     <div class="sidebar-footer">
@@ -1139,7 +1152,10 @@ const Views = {
   },
 
   _hotels(itin) {
-    const addBtn = `<button class="btn-add-comp" onclick="Edit.add_hotel(${itin.id})">+ Add Hotel</button>`;
+    const addBtn = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_hotel(${itin.id})">+ Add Hotel</button>
+      <button class="btn-ai-import" onclick="AIImport.show(${itin.id})">🤖 AI Import</button>
+    </div>`;
     if (!itin.hotels.length) return addBtn + `<div class="empty-state"><div class="icon">🏨</div><p>No hotels recorded for this trip.</p></div>`;
     return addBtn + itin.hotels.map((ho, idx) => {
       const nights = ho.checkIn && ho.checkOut
@@ -3213,6 +3229,194 @@ const PrintCal = {
         ${notesHtml}
       </div>
     </body></html>`;
+  },
+};
+
+// ══════════════════════════════════════════════════════════════
+//  AI IMPORT
+// ══════════════════════════════════════════════════════════════
+const AIImport = {
+  _itinId: null,
+
+  getKey()    { return localStorage.getItem('anthropic_api_key') || ''; },
+  setKey(k)   { k ? localStorage.setItem('anthropic_api_key', k.trim()) : localStorage.removeItem('anthropic_api_key'); },
+
+  show(itinId) {
+    this._itinId = itinId;
+    if (!this.getKey()) { this._showKeySetup(() => this._showDropModal(itinId)); return; }
+    this._showDropModal(itinId);
+  },
+
+  showKeySettings() {
+    const body = `
+      <div class="form-group">
+        <label>Anthropic API Key</label>
+        <input id="ai-key-input" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false"
+          value="${this.getKey() ? '••••••••••••' : ''}">
+        <p class="hint">Stored only in your browser's localStorage — sent only to Anthropic when importing.</p>
+      </div>
+      ${this.getKey() ? '<button class="btn btn-danger btn-sm" onclick="AIImport.setKey(\'\');Modal.hide();alert(\'API key cleared.\')">Clear saved key</button>' : ''}`;
+    Modal.show('AI API Key', body, 'Save', () => {
+      const v = document.getElementById('ai-key-input')?.value.trim();
+      if (!v || v.startsWith('•')) { Modal.hide(); return; }
+      if (!v.startsWith('sk-')) { alert('That doesn\'t look like a valid Anthropic API key (should start with sk-).'); return; }
+      this.setKey(v);
+      Modal.hide();
+    });
+  },
+
+  _showKeySetup(next) {
+    const body = `
+      <div class="alert alert-info" style="margin-bottom:16px">
+        AI Import uses Claude to read your booking confirmation and fill in the form automatically.
+        You need a free Anthropic API key — get one at
+        <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>.
+      </div>
+      <div class="form-group">
+        <label>Anthropic API Key</label>
+        <input id="ai-key-input" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
+        <p class="hint">Stored only in your browser — sent only to Anthropic when you import a file.</p>
+      </div>`;
+    Modal.show('Set Up AI Import', body, 'Save & Continue', () => {
+      const k = document.getElementById('ai-key-input')?.value.trim();
+      if (!k) { alert('Please enter your API key.'); return; }
+      if (!k.startsWith('sk-')) { alert('That doesn\'t look like a valid key (should start with sk-).'); return; }
+      this.setKey(k);
+      Modal.hide();
+      setTimeout(next, 120);
+    });
+  },
+
+  _showDropModal(itinId) {
+    const body = `
+      <div id="ai-drop-zone" class="drop-zone"
+        ondragover="event.preventDefault();this.classList.add('dragging')"
+        ondragleave="this.classList.remove('dragging')"
+        ondrop="AIImport._onDrop(event,${itinId})"
+        onclick="document.getElementById('ai-file-input').click()">
+        <div class="dz-icon">📎</div>
+        <div class="dz-title">Drop your booking confirmation here</div>
+        <div class="dz-sub">Screenshot, photo, PDF, or forwarded email text</div>
+      </div>
+      <input type="file" id="ai-file-input" accept="image/*,.pdf,.txt,.eml" style="display:none"
+        onchange="AIImport._onFileSelected(event,${itinId})">
+      <button class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;margin-bottom:8px"
+        onclick="document.getElementById('ai-file-input').click()">Choose File</button>
+      <div id="ai-status"></div>`;
+    Modal.show('Import Hotel Confirmation', body, '', null);
+    $('#modal-actions').innerHTML = `<button class="btn btn-secondary" onclick="Modal.hide()">Cancel</button>`;
+  },
+
+  _onDrop(evt, itinId) {
+    evt.preventDefault();
+    document.getElementById('ai-drop-zone')?.classList.remove('dragging');
+    const file = evt.dataTransfer.files[0];
+    if (file) this._processFile(file, itinId);
+  },
+
+  _onFileSelected(evt, itinId) {
+    const file = evt.target.files[0];
+    if (file) this._processFile(file, itinId);
+  },
+
+  async _processFile(file, itinId) {
+    const status = document.getElementById('ai-status');
+    if (status) status.innerHTML = `<div class="ai-status"><span class="spinner" style="width:18px;height:18px;border-width:2px;border-color:rgba(124,58,237,.15);border-top-color:#7c3aed;display:inline-block;border-radius:50%;animation:spin .7s linear infinite"></span> Analyzing with AI…</div>`;
+    try {
+      const fileData = await this._readFile(file);
+      const result   = await this._callClaude(fileData);
+      Modal.hide();
+      setTimeout(() => this._prefillHotelForm(result, itinId), 120);
+    } catch(e) {
+      if (status) status.innerHTML = `<div class="ai-status err">✗ ${h(e.message || 'Failed to extract details. Please try again.')}</div>`;
+    }
+  },
+
+  _readFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      const isText = file.type === 'text/plain' || file.name.endsWith('.eml') || file.name.endsWith('.txt');
+      if (isText) {
+        reader.onload  = e => resolve({ kind: 'text', content: e.target.result });
+        reader.onerror = reject;
+        reader.readAsText(file);
+      } else {
+        reader.onload  = e => resolve({ kind: 'file', content: e.target.result.split(',')[1], mediaType: file.type || 'image/jpeg' });
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      }
+    });
+  },
+
+  async _callClaude(fileData) {
+    const key = this.getKey();
+    if (!key) throw new Error('No API key — click "AI API Key" in the sidebar to add one.');
+
+    const prompt = `Extract hotel booking details from this confirmation. Return ONLY valid JSON with these exact fields (use null for anything not found, dates as YYYY-MM-DD strings):
+{"hotelName":null,"hotelCity":null,"hotelState":null,"hotelAddress":null,"hotelPhone":null,"confirmationNo":null,"checkIn":null,"checkOut":null,"roomType":null,"price":null,"pricePer":"Night","bookedThrough":null,"comments":null}`;
+
+    let content;
+    if (fileData.kind === 'text') {
+      content = [{ type:'text', text: prompt + '\n\nConfirmation text:\n' + fileData.content }];
+    } else if (fileData.mediaType === 'application/pdf') {
+      content = [
+        { type:'document', source:{ type:'base64', media_type:'application/pdf', data:fileData.content } },
+        { type:'text', text: prompt }
+      ];
+    } else {
+      content = [
+        { type:'image', source:{ type:'base64', media_type:fileData.mediaType, data:fileData.content } },
+        { type:'text', text: prompt }
+      ];
+    }
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:1024, messages:[{ role:'user', content }] })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      if (resp.status === 401) throw new Error('Invalid API key. Go to "AI API Key" in the sidebar to update it.');
+      throw new Error(err.error?.message || `API error ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || '';
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Could not read AI response — try again.');
+    return JSON.parse(match[0]);
+  },
+
+  _prefillHotelForm(data, itinId) {
+    const ho = {
+      hotelName:     data.hotelName      || '',
+      hotelCity:     data.hotelCity      || '',
+      hotelState:    data.hotelState     || '',
+      hotelAddress:  data.hotelAddress   || '',
+      hotelPhone:    data.hotelPhone     || '',
+      confirmationNo:data.confirmationNo || '',
+      checkIn:       data.checkIn        || '',
+      checkOut:      data.checkOut       || '',
+      roomType:      data.roomType       || '',
+      price:         data.price          || null,
+      pricePer:      data.pricePer       || 'Night',
+      howPaid:       '',
+      dateBooked:    '',
+      bookedThrough: data.bookedThrough  || '',
+      comments:      data.comments       || '',
+    };
+    Modal.show('Add Hotel (AI Pre-filled)', Forms.hotel(ho), 'Add', () => {
+      Edit._read_hotel(ho);
+      find_itin(itinId).hotels.push(ho);
+      Modal.hide(); State.tripTab = 'hotels'; App.render(); App.saveData();
+    });
+    sel('#f-priceper', ho.pricePer);
   },
 };
 
