@@ -974,7 +974,7 @@ const Views = {
         if (!haystack.includes(q)) return false;
       }
       return true;
-    });
+    }).sort((a,b) => (b.startDate||'').localeCompare(a.startDate||''));
 
     return `
       <div class="search-bar">
@@ -1089,7 +1089,6 @@ const Views = {
           <button class="btn btn-secondary btn-sm" onclick="Edit.trip(${itin.id})">✏️ Edit Trip</button>
           <button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.3)" onclick="Print.options(${itin.id})">🖨️ Print / PDF</button>
           <button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.3)" onclick="PrintCal.show(${itin.id})">📅 Day-by-Day</button>
-          <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="Edit.delete_trip(${itin.id})">🗑 Delete Trip</button>
         </div>
       </div>
       <div class="tabs">
@@ -1108,7 +1107,7 @@ const Views = {
       <button class="btn-ai-import" onclick="AIImport.show(${itin.id},'flight')">🤖 AI Import</button>
     </div>`;
     if (!itin.flights.length) return addBtn + `<div class="empty-state"><div class="icon">✈️</div><p>No flights recorded for this trip.</p></div>`;
-    return addBtn + itin.flights.map(f => {
+    return addBtn + [...itin.flights].sort((a,b)=>(a.segments[0]?.departDate||'').localeCompare(b.segments[0]?.departDate||'')).map(f => {
       const segs = f.segments.map((s,si) => `
         <div class="flight-seg">
           <div class="airline-badge">${h(s.airline||'?')}<br><small style="font-weight:400">${h(s.flightNo||'')}</small></div>
@@ -1167,7 +1166,7 @@ const Views = {
       <button class="btn-ai-import" onclick="AIImport.show(${itin.id})">🤖 AI Import</button>
     </div>`;
     if (!itin.hotels.length) return addBtn + `<div class="empty-state"><div class="icon">🏨</div><p>No hotels recorded for this trip.</p></div>`;
-    return addBtn + itin.hotels.map((ho, idx) => {
+    return addBtn + itin.hotels.map((ho,i)=>({ho,i})).sort((a,b)=>(a.ho.checkIn||'').localeCompare(b.ho.checkIn||'')).map(({ho,i:idx}) => {
       const nights = ho.checkIn && ho.checkOut
         ? Math.round((new Date(ho.checkOut) - new Date(ho.checkIn)) / 86400000) : null;
       return `
@@ -1213,7 +1212,7 @@ const Views = {
       <button class="btn-ai-import" onclick="AIImport.show(${itin.id},'car')">🤖 AI Import</button>
     </div>`;
     if (!itin.rentalCars.length) return addBtn + `<div class="empty-state"><div class="icon">🚗</div><p>No car rentals recorded for this trip.</p></div>`;
-    return addBtn + itin.rentalCars.map((c, idx) => `
+    return addBtn + itin.rentalCars.map((c,i)=>({c,i})).sort((a,b)=>(a.c.pickupDate||'').localeCompare(b.c.pickupDate||'')).map(({c,i:idx}) => `
       <div class="car-card">
         <div class="car-card-header">
           <div>
@@ -1253,7 +1252,7 @@ const Views = {
       <button class="btn-ai-import" onclick="AIImport.show(${itin.id},'cruise')">🤖 AI Import</button>
     </div>`;
     if (!itin.cruises.length) return addBtn + `<div class="empty-state"><div class="icon">⛴️</div><p>No cruises recorded for this trip.</p></div>`;
-    return addBtn + itin.cruises.map((c, idx) => {
+    return addBtn + itin.cruises.map((c,i)=>({c,i})).sort((a,b)=>(a.c.sailingDate||'').localeCompare(b.c.sailingDate||'')).map(({c,i:idx}) => {
       const perksHtml = c.perks?.length ? `
         <div class="perks-list">
           <div class="perk-title">Perks & Extras</div>
@@ -1340,7 +1339,7 @@ const Views = {
       <button class="btn-ai-import" onclick="AIImport.show(${itin.id},'transfer')">🤖 AI Import</button>
     </div>`;
     if (!itin.groundTransfers.length) return addBtn + `<div class="empty-state"><div class="icon">🚌</div><p>No ground transfers recorded for this trip.</p></div>`;
-    return addBtn + itin.groundTransfers.map((t, idx) => `
+    return addBtn + itin.groundTransfers.map((t,i)=>({t,i})).sort((a,b)=>(a.t.pickupDate||'').localeCompare(b.t.pickupDate||'')).map(({t,i:idx}) => `
       <div class="transfer-card">
         <div class="transfer-card-header">
           <div class="name">${h(t.vehicleType||'Transfer')} ${t.whenUsed?'— '+h(t.whenUsed):''}</div>
@@ -1380,7 +1379,7 @@ const Views = {
       <button class="btn-ai-import" onclick="AIImport.show(${itin.id},'train')">🤖 AI Import</button>
     </div>`;
     if (!trains.length) return addBtn + `<div class="empty-state"><div class="icon">🚂</div><p>No train journeys recorded for this trip.</p></div>`;
-    return addBtn + trains.map((t, idx) => `
+    return addBtn + trains.map((t,i)=>({t,i})).sort((a,b)=>(a.t.departDate||'').localeCompare(b.t.departDate||'')).map(({t,i:idx}) => `
       <div class="car-card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
           <div>
@@ -1400,6 +1399,7 @@ const Views = {
           ${t.departDate?`<div class="info-row"><div class="lbl">Departs</div><div class="val">${fmt_date(t.departDate)}${t.departTime?' at '+fmt_time(t.departTime):''}</div></div>`:''}
           ${t.arriveDate?`<div class="info-row"><div class="lbl">Arrives</div><div class="val">${fmt_date(t.arriveDate)}${t.arriveTime?' at '+fmt_time(t.arriveTime):''}</div></div>`:''}
           ${t.travelClass?`<div class="info-row"><div class="lbl">Class</div><div class="val">${h(t.travelClass)}</div></div>`:''}
+          ${t.passengerName?`<div class="info-row"><div class="lbl">Passenger</div><div class="val">${h(t.passengerName)}</div></div>`:''}
           ${t.seatNo?`<div class="info-row"><div class="lbl">Seat</div><div class="val">${h(t.carNo?t.carNo+'/':'')}${h(t.seatNo)}</div></div>`:''}
           ${t.confirmationNo?`<div class="info-row"><div class="lbl">Conf#</div><div class="val" style="font-weight:700">${h(t.confirmationNo)}</div></div>`:''}
           ${t.bookedThrough?`<div class="info-row"><div class="lbl">Booked Through</div><div class="val">${h(t.bookedThrough)}</div></div>`:''}
@@ -2278,6 +2278,10 @@ const Forms = {
           <label>Arrive Station</label>
           <input id="f-astation" type="text" value="${h(t.arriveStation||'')}">
         </div>
+        <div class="form-group full">
+          <label>Passenger Name(s)</label>
+          <input id="f-passenger" type="text" placeholder="e.g. John Smith, Jane Smith" value="${h(t.passengerName||'')}">
+        </div>
         <div class="form-group">
           <label>Car #</label>
           <input id="f-carno" type="text" value="${h(t.carNo||'')}">
@@ -2380,6 +2384,12 @@ const Edit = {
       itin.travellerId      = gv('#f-traveller')?parseInt(gv('#f-traveller')):itin.travellerId;
       Modal.hide(); App.render(); App.saveData();
     });
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn btn-danger';
+    delBtn.style.marginRight = 'auto';
+    delBtn.textContent = '🗑 Delete Trip';
+    delBtn.onclick = () => { Modal.hide(); Edit.delete_trip(id); };
+    $('#modal-actions').insertBefore(delBtn, $('#modal-actions').firstChild);
   },
 
   delete_trip(id) {
@@ -2722,7 +2732,7 @@ const Edit = {
   add_train(itinId) {
     const itin = find_itin(itinId);
     if (!itin.trains) itin.trains = [];
-    const blank = {operator:'',trainNo:'',confirmationNo:'',travelClass:'',departDate:'',departTime:'',departStation:'',arriveDate:'',arriveTime:'',arriveStation:'',carNo:'',seatNo:'',price:null,howPaid:'',dateBooked:'',bookedThrough:'',comments:''};
+    const blank = {operator:'',trainNo:'',confirmationNo:'',travelClass:'',passengerName:'',departDate:'',departTime:'',departStation:'',arriveDate:'',arriveTime:'',arriveStation:'',carNo:'',seatNo:'',price:null,howPaid:'',dateBooked:'',bookedThrough:'',comments:''};
     Modal.show('Add Train', Forms.train(blank), 'Add', () => {
       Edit._read_train(blank);
       itin.trains.push(blank);
@@ -2748,6 +2758,7 @@ const Edit = {
     t.arriveDate    = gv('#f-adate')||null;
     t.arriveTime    = gv('#f-atime')||null;
     t.arriveStation = gv('#f-astation');
+    t.passengerName = gv('#f-passenger');
     t.carNo         = gv('#f-carno');
     t.seatNo        = gv('#f-seatno');
     t.price         = gvn('#f-price');
