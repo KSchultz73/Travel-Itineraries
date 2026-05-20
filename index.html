@@ -704,6 +704,12 @@ function fmt_time(s) {
   const hh = h % 12 || 12;
   return `${hh}:${String(min).padStart(2,'0')} ${ampm}`;
 }
+function fmt_file_size(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
 function is_future(s) {
   if (!s) return false;
   return s >= new Date().toISOString().slice(0,10);
@@ -837,6 +843,49 @@ const DB = {
     });
     if (!r.ok) throw new Error('Dropbox save failed: ' + r.status);
     return r.json();
+  },
+  async uploadFile(path, file) {
+    const token = await Auth.getToken();
+    if (!token) throw new Error('Not authenticated');
+    const r = await fetch('https://content.dropboxapi.com/2/files/upload', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/octet-stream',
+        'Dropbox-API-Arg': JSON.stringify({path, mode:'add', autorename:true}),
+      },
+      body: file
+    });
+    if (!r.ok) throw new Error('Upload failed: ' + r.status);
+    return r.json();
+  },
+  async getTempLink(path) {
+    const token = await Auth.getToken();
+    if (!token) throw new Error('Not authenticated');
+    const r = await fetch('https://api.dropboxapi.com/2/files/get_temporary_link', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({path})
+    });
+    if (!r.ok) throw new Error('Could not get file link: ' + r.status);
+    const d = await r.json();
+    return d.link;
+  },
+  async deleteFile(path) {
+    const token = await Auth.getToken();
+    if (!token) throw new Error('Not authenticated');
+    const r = await fetch('https://api.dropboxapi.com/2/files/delete_v2', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({path})
+    });
+    if (!r.ok) throw new Error('Delete failed: ' + r.status);
   }
 };
 
@@ -1028,6 +1077,7 @@ const Views = {
       transfers: itin.groundTransfers.length,
       trains:    (itin.trains||[]).length,
       notes:     itin.notes.length,
+      files:     (itin.attachments||[]).length,
     };
     const dur = itin.startDate && itin.endDate
       ? `${fmt_date_short(itin.startDate)} – ${fmt_date(itin.endDate)}`
@@ -1052,6 +1102,7 @@ const Views = {
       ['transfers','🚌 Transfers',counts.transfers],
       ['trains','🚂 Trains',counts.trains],
       ['notes','📝 Notes',counts.notes],
+      ['files','📎 Files',counts.files],
     ].filter(([,, c]) => c > 0 || ['flights','hotels','notes'].includes(arguments[0]));
 
     let tabContent = '';
@@ -1063,6 +1114,7 @@ const Views = {
     else if (tab === 'transfers') tabContent = Views._transfers(itin);
     else if (tab === 'trains')    tabContent = Views._trains(itin);
     else if (tab === 'notes')     tabContent = Views._notes(itin);
+    else if (tab === 'files')     tabContent = Views._files(itin);
 
     const visibleTabs = [
       ['flights',   '✈ Flights',    counts.flights],
@@ -1073,6 +1125,7 @@ const Views = {
       ['transfers', '🚌 Transfers', counts.transfers],
       ['trains',    '🚂 Trains',    counts.trains],
       ['notes',     '📝 Notes',     counts.notes],
+      ['files',     '📎 Files',     counts.files],
     ];
     if (!visibleTabs.find(t=>t[0]===tab)) State.tripTab = visibleTabs[0]?.[0] || 'flights';
 
@@ -1390,6 +1443,7 @@ const Views = {
             ${t.price?`<div style="font-weight:700">${fmt_money(t.price)}</div>`:''}
             <div class="component-actions">
               <button class="btn-edit" onclick="Edit.edit_train(${itin.id},${idx})">Edit</button>
+              <button class="btn-edit" onclick="Edit.copy_train(${itin.id},${idx})" title="Copy (clears passenger &amp; seat)">Copy</button>
               <button class="btn-move" onclick="Edit.move_component(${itin.id},'trains',${idx})">Move</button>
               <button class="btn-del" onclick="Edit.delete_train(${itin.id},${idx})">Del</button>
             </div>
@@ -1419,6 +1473,24 @@ const Views = {
           <button class="btn-del" onclick="Edit.delete_note(${itin.id},${idx})">Del</button>
         </div>
       </div>`).join('');
+  },
+
+  _files(itin) {
+    const atts = itin.attachments || [];
+    const addBtn = `<button class="btn-add-comp" onclick="Edit.upload_attachment(${itin.id})">📎 Attach File</button>`;
+    if (!atts.length) return addBtn + `<div class="empty-state"><div class="icon">📎</div><p>No files attached to this trip.<br><small style="font-size:13px">Attach PDFs, confirmations, tickets, or any document from your Dropbox storage.</small></p></div>`;
+    return addBtn + `<div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">` +
+      atts.map((a, idx) => `
+        <div class="car-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <div style="min-width:0">
+            <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h(a.name)}</div>
+            <div style="font-size:12px;color:var(--muted)">${fmt_file_size(a.size)}${a.uploadedAt?' · '+fmt_date(a.uploadedAt):''}</div>
+          </div>
+          <div class="component-actions" style="flex-shrink:0">
+            <button class="btn-edit" onclick="Edit.view_attachment('${a.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">View</button>
+            <button class="btn-del" onclick="Edit.delete_attachment(${itin.id},${idx})">Del</button>
+          </div>
+        </div>`).join('') + `</div>`;
   },
 
   // ── Travellers ──────────────────────────────────────────────
@@ -1685,7 +1757,7 @@ const App = {
       startDestination: $('#f-from').value.trim() || null,
       endDestination: $('#f-to').value.trim() || null,
       flights: [], hotels: [], rentalCars: [], cruises: [],
-      activities: [], groundTransfers: [], trains: [], notes: [],
+      activities: [], groundTransfers: [], trains: [], notes: [], attachments: [],
     };
     State.data.itineraries.unshift(trip);
     State.dirty = true;
@@ -2771,6 +2843,63 @@ const Edit = {
   delete_train(itinId, idx) {
     if (!confirm('Delete this train journey?')) return;
     find_itin(itinId).trains.splice(idx,1);
+    App.render(); App.saveData();
+  },
+
+  copy_train(itinId, idx) {
+    const itin = find_itin(itinId);
+    if (!itin.trains) itin.trains = [];
+    const orig = itin.trains[idx];
+    const copy = {...orig, passengerName: '', seatNo: '', id: Date.now()};
+    itin.trains.splice(idx + 1, 0, copy);
+    App.render(); App.saveData();
+  },
+
+  // ── Attachments ─────────────────────────────────────────────
+  upload_attachment(itinId) {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.onchange = e => Edit._do_upload(e, itinId);
+    inp.click();
+  },
+
+  async _do_upload(evt, itinId) {
+    const file = evt.target.files[0];
+    if (!file) return;
+    const itin = find_itin(itinId);
+    if (!itin.attachments) itin.attachments = [];
+    const path = `/attachments/${itinId}/${file.name}`;
+    try {
+      const meta = await DB.uploadFile(path, file);
+      itin.attachments.push({
+        id: Date.now(),
+        name: file.name,
+        path: meta.path_lower || path,
+        size: file.size,
+        uploadedAt: new Date().toISOString().slice(0,10)
+      });
+      State.tripTab = 'files';
+      App.render(); App.saveData();
+    } catch(e) {
+      alert('Upload failed: ' + e.message);
+    }
+  },
+
+  async view_attachment(path) {
+    try {
+      const link = await DB.getTempLink(path);
+      window.open(link, '_blank');
+    } catch(e) {
+      alert('Could not open file: ' + e.message);
+    }
+  },
+
+  async delete_attachment(itinId, idx) {
+    if (!confirm('Remove this attachment?')) return;
+    const itin = find_itin(itinId);
+    const att = itin.attachments[idx];
+    try { await DB.deleteFile(att.path); } catch(e) { /* file may already be gone */ }
+    itin.attachments.splice(idx, 1);
     App.render(); App.saveData();
   },
 
