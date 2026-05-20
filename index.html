@@ -946,22 +946,22 @@ const Views = {
 
     let html = `
       <div class="stats-grid">
-        <div class="stat-card accent-blue">
+        <div class="stat-card accent-blue" onclick="Router.go('trips')" style="cursor:pointer" title="View all trips">
           <div class="label">Total Trips</div>
           <div class="value">${d.itineraries.length}</div>
           <div class="sub">since ${d.itineraries.slice(-1)[0]?.startDate?.slice(0,4)||'?'}</div>
         </div>
-        <div class="stat-card accent-green">
+        <div class="stat-card accent-green" onclick="Router.go('trips')" style="cursor:pointer" title="View all trips">
           <div class="label">Upcoming</div>
           <div class="value">${upcoming.length}</div>
           <div class="sub">trip${upcoming.length!==1?'s':''} planned</div>
         </div>
-        <div class="stat-card accent-amber">
+        <div class="stat-card accent-amber" onclick="Router.go('trips')" style="cursor:pointer" title="View all trips">
           <div class="label">Flights Taken</div>
           <div class="value">${totalFlights}</div>
           <div class="sub">${totalCruises} cruise${totalCruises!==1?'s':''}</div>
         </div>
-        <div class="stat-card accent-purple">
+        <div class="stat-card accent-purple" onclick="Router.go('trips')" style="cursor:pointer" title="View all trips">
           <div class="label">Hotel Stays</div>
           <div class="value">${totalHotels}</div>
           <div class="sub">${totalCars} car rental${totalCars!==1?'s':''}</div>
@@ -1138,10 +1138,11 @@ const Views = {
           ${dest ? `<span>📍 ${h(dest)}</span>` : ''}
         </div>
         <div class="component-badges" style="margin-bottom:14px">${allBadges || '<span style="opacity:.6;font-size:13px">No components recorded</span>'}</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <button class="btn btn-secondary btn-sm" onclick="Edit.trip(${itin.id})">✏️ Edit Trip</button>
           <button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.3)" onclick="Print.options(${itin.id})">🖨️ Print / PDF</button>
           <button class="btn btn-sm" style="background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.3)" onclick="PrintCal.show(${itin.id})">📅 Day-by-Day</button>
+          <button onclick="Edit.delete_trip(${itin.id})" title="Delete Trip" style="margin-left:auto;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);color:#fca5a5;border-radius:8px;padding:6px 10px;font-size:16px;line-height:1;cursor:pointer" onmouseover="this.style.background='rgba(239,68,68,.3)'" onmouseout="this.style.background='rgba(239,68,68,.15)'">🗑</button>
         </div>
       </div>
       <div class="tabs">
@@ -1252,8 +1253,8 @@ const Views = {
             ${ho.confirmationNo ? `<div class="info-row"><div class="lbl">Confirmation</div><div class="val" style="font-weight:700">${h(ho.confirmationNo)}</div></div>` : ''}
             ${ho.hotelPhone ? `<div class="info-row"><div class="lbl">Phone</div><div class="val">${h(ho.hotelPhone)}</div></div>` : ''}
             ${ho.bookedThrough ? `<div class="info-row"><div class="lbl">Booked Via</div><div class="val">${h(ho.bookedThrough)}${ho.dateBooked?' · '+fmt_date(ho.dateBooked):''}</div></div>` : ''}
-            ${ho.hotelAddress ? `<div class="info-row full"><div class="lbl">Address</div><div class="val">${h(ho.hotelAddress)}</div></div>` : ''}
-            ${ho.comments ? `<div class="info-row full"><div class="comments-block">${h(ho.comments)}</div></div>` : ''}
+            ${ho.hotelAddress ? `<div class="info-row full-row"><div class="lbl">Address</div><div class="val">${h(ho.hotelAddress)}</div></div>` : ''}
+            ${ho.comments ? `<div class="full-row"><div class="comments-block">${h(ho.comments)}</div></div>` : ''}
           </div>
         </div>`;
     }).join('');
@@ -1789,7 +1790,7 @@ const Modal = {
   _save() { if (Modal._onSave) Modal._onSave(); }
 };
 document.addEventListener('keydown', e => { if(e.key==='Escape') Modal.hide(); });
-$('#modal-overlay').addEventListener('click', e => { if(e.target===e.currentTarget) Modal.hide(); });
+// Modal does not close on outside click — use Cancel button or Escape
 
 // ══════════════════════════════════════════════════════════════
 //  HELPERS
@@ -2352,7 +2353,14 @@ const Forms = {
         </div>
         <div class="form-group full">
           <label>Passenger Name(s)</label>
-          <input id="f-passenger" type="text" placeholder="e.g. John Smith, Jane Smith" value="${h(t.passengerName||'')}">
+          <select id="f-passenger">
+            <option value="">— Select or type below —</option>
+            ${traveller_select(t.passengerName||'')}
+          </select>
+          <input id="f-passenger-other" type="text" placeholder="Or type name(s) manually, e.g. John Smith, Jane Smith"
+            value="${traveller_select(t.passengerName||'').includes('selected') ? '' : h(t.passengerName||'')}"
+            style="margin-top:6px"
+            oninput="if(this.value){document.getElementById('f-passenger').value='';}">
         </div>
         <div class="form-group">
           <label>Car #</label>
@@ -2456,12 +2464,6 @@ const Edit = {
       itin.travellerId      = gv('#f-traveller')?parseInt(gv('#f-traveller')):itin.travellerId;
       Modal.hide(); App.render(); App.saveData();
     });
-    const delBtn = document.createElement('button');
-    delBtn.className = 'btn btn-danger';
-    delBtn.style.marginRight = 'auto';
-    delBtn.textContent = '🗑 Delete Trip';
-    delBtn.onclick = () => { Modal.hide(); Edit.delete_trip(id); };
-    $('#modal-actions').insertBefore(delBtn, $('#modal-actions').firstChild);
   },
 
   delete_trip(id) {
@@ -2830,7 +2832,7 @@ const Edit = {
     t.arriveDate    = gv('#f-adate')||null;
     t.arriveTime    = gv('#f-atime')||null;
     t.arriveStation = gv('#f-astation');
-    t.passengerName = gv('#f-passenger');
+    t.passengerName = gv('#f-passenger') || gv('#f-passenger-other');
     t.carNo         = gv('#f-carno');
     t.seatNo        = gv('#f-seatno');
     t.price         = gvn('#f-price');
@@ -3227,23 +3229,32 @@ const Print = {
 
   _costs(itin) {
     const days_between = (a, b) => a && b ? Math.round((new Date(b) - new Date(a)) / 86400000) : null;
-    const lines = [];
-    let grand = 0;
+    let grandCash = 0;
 
+    // Each item: { label, note, cashAmt, pointsLabel }
     const section = (icon, label, items) => {
       if (!items.length) return '';
-      const sub = items.reduce((s, x) => s + x.amt, 0);
-      grand += sub;
-      const rows = items.map(x =>
-        `<tr>
-          <td style="padding:4px 10px 4px 24px;color:#475569;font-size:12px">${x.label}</td>
-          <td style="padding:4px 10px;text-align:right;font-size:12px;white-space:nowrap">${x.note||''}</td>
-          <td style="padding:4px 10px;text-align:right;font-size:12px;font-weight:600;white-space:nowrap">${x.amt > 0 ? fmt_money(x.amt) : x.free || '—'}</td>
+      const cashSub = items.reduce((s, x) => s + (x.cashAmt || 0), 0);
+      grandCash += cashSub;
+      const rows = items.map(x => `
+        <tr>
+          <td style="padding:4px 10px 4px 24px;color:#475569;font-size:12px">
+            ${x.label}${x.note ? `<br><span style="font-size:11px;color:#94a3b8">${x.note}</span>` : ''}
+          </td>
+          <td style="padding:4px 10px;text-align:right;font-size:12px;font-weight:600;white-space:nowrap">
+            ${x.cashAmt > 0 ? fmt_money(x.cashAmt) : (x.pointsLabel ? '—' : '—')}
+          </td>
+          <td style="padding:4px 10px;text-align:right;font-size:12px;color:#7c3aed;white-space:nowrap">
+            ${x.pointsLabel || ''}
+          </td>
         </tr>`).join('');
       return `
         <tr style="background:#f8fafc">
-          <td colspan="2" style="padding:8px 10px;font-weight:700;font-size:13px">${icon} ${label}</td>
-          <td style="padding:8px 10px;text-align:right;font-weight:700;font-size:13px">${sub > 0 ? fmt_money(sub) : '—'}</td>
+          <td style="padding:8px 10px;font-weight:700;font-size:13px">${icon} ${label}</td>
+          <td style="padding:8px 10px;text-align:right;font-weight:700;font-size:13px">${cashSub > 0 ? fmt_money(cashSub) : '—'}</td>
+          <td style="padding:8px 10px;text-align:right;font-size:12px;color:#7c3aed;font-weight:600">
+            ${items.some(x=>x.pointsLabel) ? items.filter(x=>x.pointsLabel).length + ' non-cash' : ''}
+          </td>
         </tr>
         ${rows}`;
     };
@@ -3251,58 +3262,65 @@ const Print = {
     // ── Flights ──
     const flightItems = itin.flights.map(f => {
       const byPoints = /points|miles|award/i.test(f.howPaid||'');
-      const label = f.confirmationNo ? `Conf# ${h(f.confirmationNo)}` : (f.segments[0] ? `${f.segments[0].departCity||''} → ${f.segments[f.segments.length-1].arriveCity||''}` : 'Flight');
-      return { label, amt: byPoints ? 0 : (f.price || 0), free: byPoints ? 'Points/Miles' : null, note: f.howPaid && !byPoints ? h(f.howPaid) : (byPoints ? '' : '') };
+      const byVoucher = /voucher|credit|comp/i.test(f.howPaid||'');
+      const route = f.segments.length
+        ? `${f.segments[0].departCity||''} → ${f.segments[f.segments.length-1].arriveCity||''}`
+        : (f.confirmationNo ? `Conf# ${h(f.confirmationNo)}` : 'Flight');
+      const pointsLabel = byPoints ? (f.howPaid || 'Points/Miles') : (byVoucher ? (f.howPaid || 'Voucher') : '');
+      return { label: route, note: f.bookedThrough ? `via ${h(f.bookedThrough)}` : '', cashAmt: (byPoints||byVoucher) ? 0 : (f.price||0), pointsLabel };
     });
 
     // ── Hotels ──
     const hotelItems = itin.hotels.map(ho => {
-      let amt = ho.price || 0;
+      const byPoints = /points|miles|award/i.test(ho.howPaid||'');
+      const byVoucher = /voucher|credit|comp/i.test(ho.howPaid||'');
+      let cashAmt = ho.price || 0;
       let note = '';
       if (ho.pricePer === 'Night' && ho.checkIn && ho.checkOut) {
         const nights = days_between(ho.checkIn, ho.checkOut);
-        if (nights) { amt = (ho.price || 0) * nights; note = `${fmt_money(ho.price||0)}/night × ${nights}`; }
-      } else if (ho.pricePer && ho.pricePer !== 'Length of Stay') {
-        note = ho.pricePer;
-      }
-      return { label: h(ho.hotelName || 'Hotel') + (ho.hotelCity ? ` · ${h(ho.hotelCity)}` : ''), amt, note };
+        if (nights) { cashAmt = (ho.price||0) * nights; note = `${fmt_money(ho.price||0)}/night × ${nights} nights`; }
+      } else if (ho.pricePer && ho.pricePer !== 'Length of Stay') { note = ho.pricePer; }
+      const pointsLabel = byPoints ? (ho.howPaid||'Points/Miles') : (byVoucher ? (ho.howPaid||'Voucher') : '');
+      return { label: h(ho.hotelName||'Hotel') + (ho.hotelCity ? ` · ${h(ho.hotelCity)}` : ''), note, cashAmt: (byPoints||byVoucher) ? 0 : cashAmt, pointsLabel };
     });
 
     // ── Cars ──
     const carItems = itin.rentalCars.map(c => {
-      let amt = c.priceQuoted || 0;
+      let cashAmt = c.priceQuoted || 0;
       let note = '';
       const days = days_between(c.pickupDate, c.dropOffDate);
-      if (c.pricePer === 'Day' && days) {
-        amt = (c.priceQuoted || 0) * days; note = `${fmt_money(c.priceQuoted||0)}/day × ${days}`;
-      } else if (c.pricePer === 'Week' && days) {
-        const wks = Math.ceil(days / 7); amt = (c.priceQuoted || 0) * wks; note = `${fmt_money(c.priceQuoted||0)}/week × ${wks}`;
-      } else if (c.pricePer) { note = c.pricePer; }
-      return { label: h(c.company || 'Car Rental') + (c.carType ? ` · ${h(c.carType)}` : ''), amt, note };
+      if (c.pricePer === 'Day' && days) { cashAmt = (c.priceQuoted||0)*days; note = `${fmt_money(c.priceQuoted||0)}/day × ${days}`; }
+      else if (c.pricePer === 'Week' && days) { const wks=Math.ceil(days/7); cashAmt=(c.priceQuoted||0)*wks; note=`${fmt_money(c.priceQuoted||0)}/week × ${wks}`; }
+      else if (c.pricePer) { note = c.pricePer; }
+      return { label: h(c.company||'Car Rental') + (c.carType?` · ${h(c.carType)}`:''), note, cashAmt, pointsLabel: '' };
     });
 
     // ── Cruises ──
     const cruiseItems = itin.cruises.map(c => {
-      let amt = 0, note = '';
-      if (c.totalPrice) {
-        amt = c.totalPrice; note = 'total';
-      } else if (c.price) {
-        const pax = (c.guest1 ? 1 : 0) + (c.guest2 ? 1 : 0) || 1;
-        amt = c.price * pax; note = pax > 1 ? `${fmt_money(c.price)}/person × ${pax}` : `${fmt_money(c.price)}/person`;
-      }
-      return { label: h(c.shipName || 'Cruise'), amt, note };
+      const byPoints = /points|miles|award/i.test(c.howPaid||'');
+      let cashAmt = 0, note = '';
+      if (c.totalPrice) { cashAmt = c.totalPrice; note = 'total'; }
+      else if (c.price) { const pax=(c.guest1?1:0)+(c.guest2?1:0)||1; cashAmt=c.price*pax; note=pax>1?`${fmt_money(c.price)}/person × ${pax}`:`${fmt_money(c.price)}/person`; }
+      const pointsLabel = byPoints ? (c.howPaid||'Points/Miles') : '';
+      return { label: h(c.shipName||'Cruise'), note, cashAmt: byPoints ? 0 : cashAmt, pointsLabel };
     });
 
     // ── Activities ──
     const actItems = itin.activities.filter(a => a.price).map(a => ({
-      label: h(a.activity || 'Activity') + (a.date ? ` · ${fmt_date_short(a.date)}` : ''),
-      amt: a.price || 0, note: ''
+      label: h(a.activity||'Activity') + (a.date ? ` · ${fmt_date_short(a.date)}` : ''),
+      note: '', cashAmt: a.price||0, pointsLabel: ''
     }));
 
     // ── Transfers ──
     const xferItems = itin.groundTransfers.filter(t => t.priceQuoted).map(t => ({
-      label: h(t.vehicleType || 'Transfer') + (t.whenUsed ? ` · ${h(t.whenUsed)}` : ''),
-      amt: t.priceQuoted || 0, note: t.pricePer || ''
+      label: h(t.vehicleType||'Transfer') + (t.whenUsed ? ` · ${h(t.whenUsed)}` : ''),
+      note: t.pricePer||'', cashAmt: t.priceQuoted||0, pointsLabel: ''
+    }));
+
+    // ── Trains ──
+    const trainItems = (itin.trains||[]).filter(t => t.price).map(t => ({
+      label: h(t.operator||'Train') + (t.departStation&&t.arriveStation ? ` · ${h(t.departStation)} → ${h(t.arriveStation)}` : ''),
+      note: '', cashAmt: t.price||0, pointsLabel: ''
     }));
 
     const body = [
@@ -3312,26 +3330,33 @@ const Print = {
       section('⛴', 'Cruises', cruiseItems),
       section('🎯', 'Activities', actItems),
       section('🚌', 'Transfers', xferItems),
+      section('🚂', 'Trains', trainItems),
     ].filter(Boolean).join('');
 
     if (!body) return '';
+
+    const allItems = [...flightItems,...hotelItems,...carItems,...cruiseItems,...actItems,...xferItems,...trainItems];
+    const pointsList = allItems.filter(x=>x.pointsLabel);
+
     return `
       <div style="margin-bottom:24px;page-break-inside:avoid">
         <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b;border-bottom:2px solid #1e3a5f;padding-bottom:6px;margin-bottom:10px">💰 Cost Summary</div>
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead><tr style="background:#1e3a5f;color:white">
             <th style="padding:7px 10px;text-align:left">Item</th>
-            <th style="padding:7px 10px;text-align:right">Rate / Notes</th>
-            <th style="padding:7px 10px;text-align:right;white-space:nowrap">Amount</th>
+            <th style="padding:7px 10px;text-align:right;white-space:nowrap">Cash Paid</th>
+            <th style="padding:7px 10px;text-align:right;white-space:nowrap">Points / Voucher</th>
           </tr></thead>
           <tbody>${body}
           <tr style="background:#1e3a5f;color:white">
-            <td colspan="2" style="padding:9px 10px;font-weight:800;font-size:14px">GRAND TOTAL</td>
-            <td style="padding:9px 10px;text-align:right;font-weight:800;font-size:14px">${fmt_money(grand)}</td>
+            <td style="padding:9px 10px;font-weight:800;font-size:14px">TOTAL CASH PAID</td>
+            <td style="padding:9px 10px;text-align:right;font-weight:800;font-size:14px">${fmt_money(grandCash)}</td>
+            <td style="padding:9px 10px;text-align:right;font-size:12px">${pointsList.length ? pointsList.length + ' item' + (pointsList.length>1?'s':'') + ' non-cash' : ''}</td>
           </tr>
           </tbody>
         </table>
-        <p style="font-size:11px;color:#94a3b8;margin-top:6px">* Items paid by points/miles are counted as $0. Rate-based items are multiplied by duration.</p>
+        ${pointsList.length ? `<p style="font-size:11px;color:#7c3aed;margin-top:6px">Non-cash items: ${pointsList.map(x=>`${x.label} (${x.pointsLabel})`).join('; ')}</p>` : ''}
+        <p style="font-size:11px;color:#94a3b8;margin-top:4px">Rate-based items (hotels/cars) are multiplied by duration.</p>
       </div>`;
   },
 
