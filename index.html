@@ -1364,11 +1364,12 @@ const Views = {
                   ${ts.icon} ${h(s.dayType||'Port Day')}
                   ${s.port ? `<span style="font-weight:500"> — ${h(s.port)}</span>` : ''}
                 </div>
-                ${(s.arrivalTime||s.departureTime) ? `
+                ${(s.arrivalTime||s.departureTime||s.arrivalMethod) ? `
                   <div style="font-size:12px;color:${ts.color};opacity:.85;margin-top:3px">
                     ${s.arrivalTime?'Arrives '+fmt_time(s.arrivalTime):''}
                     ${s.arrivalTime&&s.departureTime?' · ':''}
                     ${s.departureTime?'Departs '+fmt_time(s.departureTime):''}
+                    ${s.arrivalMethod?(s.arrivalTime||s.departureTime?' · ':'')+s.arrivalMethod:''}
                   </div>` : ''}
                 ${s.description ? `<div style="font-size:12px;color:${ts.color};opacity:.75;margin-top:3px;font-style:italic">${h(s.description)}</div>` : ''}
               </div>
@@ -2439,6 +2440,14 @@ const Forms = {
           <label>Departure Time</label>
           <input id="f-dtime" type="time" value="${s.departureTime||''}">
         </div>
+        <div class="form-group">
+          <label>Arrival Method</label>
+          <select id="f-arrmethod">
+            <option value="">— N/A —</option>
+            <option value="Dock" ${(s.arrivalMethod||'')==='Dock'?'selected':''}>Dock</option>
+            <option value="Tender" ${(s.arrivalMethod||'')==='Tender'?'selected':''}>Tender</option>
+          </select>
+        </div>
         <div class="form-group full">
           <label>Description / Notes</label>
           <textarea id="f-description" placeholder="e.g. Free day ashore, scenic tender port, must be back by 5:30 PM">${h(s.description||'')}</textarea>
@@ -3001,6 +3010,7 @@ const Edit = {
     s.port          = gv('#f-port');
     s.arrivalTime   = gv('#f-atime')||null;
     s.departureTime = gv('#f-dtime')||null;
+    s.arrivalMethod = gv('#f-arrmethod')||null;
     s.description   = gv('#f-description');
   },
 
