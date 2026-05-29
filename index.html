@@ -1322,28 +1322,110 @@ const Views = {
           <div class="perk-title">Perks & Extras</div>
           ${c.perks.map(p=>`<div class="perk-item"><span>${h(p.perk||'')}</span><span>${p.amount?fmt_money(p.amount):''}</span></div>`).join('')}
         </div>` : '';
-      const acts = c.activities || [];
-      const activitiesHtml = `
-        <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">⚓ Booked Activities / Excursions</div>
-          ${acts.map((a,ai) => `
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px;background:var(--bg);border-radius:8px;margin-bottom:6px">
-              <div>
-                <div style="font-weight:600;font-size:13px">${h(a.activity||'Activity')}</div>
-                ${a.port ? `<div style="font-size:12px;color:var(--muted)">📍 ${h(a.port)}</div>` : ''}
-                ${(a.date||a.time) ? `<div style="font-size:12px;color:var(--muted)">${a.date?fmt_date(a.date):''}${a.time?' at '+fmt_time(a.time):''}</div>` : ''}
-                ${a.confirmationNo ? `<div style="font-size:12px;font-weight:600">Conf# ${h(a.confirmationNo)}</div>` : ''}
-                ${a.comments ? `<div style="font-size:12px;color:var(--muted);font-style:italic">${h(a.comments)}</div>` : ''}
+
+      // ── Combined itinerary timeline ──────────────────────────
+      const stopTypeStyle = {
+        'Embarkation': {bg:'#d1fae5',color:'#065f46',icon:'🛳️'},
+        'Debarkation': {bg:'#fef2f2',color:'#991b1b',icon:'🏁'},
+        'Day at Sea':  {bg:'#ede9fe',color:'#5b21b6',icon:'🌊'},
+        'Port Day':    {bg:'#dbeafe',color:'#1d4ed8',icon:'⚓'},
+      };
+      const stops  = (c.itinerary||[]);
+      const acts   = (c.activities||[]);
+
+      // Build day map: date → {stopIdx?, actIdxs[]}
+      const dayMap = {};
+      stops.forEach((s,si) => {
+        const k = s.date||'__none';
+        if (!dayMap[k]) dayMap[k] = {si:null, ais:[]};
+        dayMap[k].si = si;
+      });
+      acts.forEach((a,ai) => {
+        const k = a.date||'__none';
+        if (!dayMap[k]) dayMap[k] = {si:null, ais:[]};
+        dayMap[k].ais.push(ai);
+      });
+
+      const sortedKeys = Object.keys(dayMap).filter(k=>k!=='__none').sort();
+      if (dayMap['__none']) sortedKeys.push('__none');
+
+      const timelineRows = sortedKeys.map(k => {
+        const day = dayMap[k];
+        let stopHtml = '';
+        if (day.si !== null) {
+          const s = stops[day.si];
+          const ts = stopTypeStyle[s.dayType] || stopTypeStyle['Port Day'];
+          const si = day.si;
+          stopHtml = `
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;
+                        padding:10px 12px;background:${ts.bg};border-radius:8px;margin-bottom:6px">
+              <div style="min-width:0">
+                <div style="font-weight:700;font-size:14px;color:${ts.color}">
+                  ${ts.icon} ${h(s.dayType||'Port Day')}
+                  ${s.port ? `<span style="font-weight:500"> — ${h(s.port)}</span>` : ''}
+                </div>
+                ${(s.arrivalTime||s.departureTime) ? `
+                  <div style="font-size:12px;color:${ts.color};opacity:.85;margin-top:3px">
+                    ${s.arrivalTime?'Arrives '+fmt_time(s.arrivalTime):''}
+                    ${s.arrivalTime&&s.departureTime?' · ':''}
+                    ${s.departureTime?'Departs '+fmt_time(s.departureTime):''}
+                  </div>` : ''}
+                ${s.description ? `<div style="font-size:12px;color:${ts.color};opacity:.75;margin-top:3px;font-style:italic">${h(s.description)}</div>` : ''}
               </div>
-              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-                ${a.price ? `<div style="font-weight:700;font-size:13px">${fmt_money(a.price)}</div>` : ''}
+              <div class="component-actions" style="flex-shrink:0;margin-left:8px">
+                <button class="btn-edit" onclick="Edit.edit_cruise_stop(${itin.id},${idx},${si})">Edit</button>
+                <button class="btn-del" onclick="Edit.delete_cruise_stop(${itin.id},${idx},${si})">Del</button>
+              </div>
+            </div>`;
+        }
+
+        const actsHtml = day.ais.map(ai => {
+          const a = acts[ai];
+          return `
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;
+                        padding:8px 12px 8px 20px;background:var(--bg);border-radius:8px;
+                        margin-bottom:5px;border-left:3px solid #f59e0b">
+              <div style="min-width:0">
+                <div style="font-weight:600;font-size:13px">🎫 ${h(a.activity||'Activity')}</div>
+                <div style="font-size:12px;color:var(--muted)">
+                  ${a.time?fmt_time(a.time):''}
+                  ${a.time&&a.port?' · ':''}
+                  ${a.port?'📍 '+h(a.port):''}
+                  ${a.confirmationNo?' · Conf# '+h(a.confirmationNo):''}
+                </div>
+                ${a.comments?`<div style="font-size:12px;color:var(--muted);font-style:italic">${h(a.comments)}</div>`:''}
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:8px">
+                ${a.price?`<div style="font-weight:700;font-size:13px;color:var(--green)">${fmt_money(a.price)}</div>`:''}
                 <div class="component-actions">
                   <button class="btn-edit" onclick="Edit.edit_cruise_activity(${itin.id},${idx},${ai})">Edit</button>
                   <button class="btn-del" onclick="Edit.delete_cruise_activity(${itin.id},${idx},${ai})">Del</button>
                 </div>
               </div>
-            </div>`).join('')}
-          <button class="btn-add-comp" style="margin-bottom:0;font-size:13px;margin-top:4px" onclick="Edit.add_cruise_activity(${itin.id},${idx})">+ Add Activity / Excursion</button>
+            </div>`;
+        }).join('');
+
+        const dayLabel = k === '__none'
+          ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Unscheduled</div>`
+          : `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:6px">${fmt_date(k)}</div>`;
+
+        return `<div style="margin-bottom:10px">${dayLabel}${stopHtml}${actsHtml}</div>`;
+      }).join('');
+
+      const timelineHtml = `
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">
+              📅 Itinerary &amp; Activities
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn-add-comp" style="margin-bottom:0;font-size:12px;padding:4px 10px"
+                onclick="Edit.add_cruise_stop(${itin.id},${idx})">+ Port / Sea Day</button>
+              <button class="btn-add-comp" style="margin-bottom:0;font-size:12px;padding:4px 10px;background:#fffbeb;border-color:#fcd34d;color:#92400e"
+                onclick="Edit.add_cruise_activity(${itin.id},${idx})">🎫 + Excursion</button>
+            </div>
+          </div>
+          ${timelineRows || `<div style="color:var(--muted);font-size:13px;font-style:italic;padding:8px 0">No itinerary or activities yet. Add port stops and excursions above.</div>`}
         </div>`;
       return `
         <div class="cruise-card">
@@ -1388,7 +1470,7 @@ const Views = {
             </div>
             ${c.comments ? `<div class="comments-block" style="margin-bottom:12px">${h(c.comments)}</div>` : ''}
             ${perksHtml}
-            ${activitiesHtml}
+            ${timelineHtml}
           </div>
         </div>`;
     }).join('');
@@ -2332,6 +2414,38 @@ const Forms = {
       </div>`;
   },
 
+  cruise_stop(s) {
+    const typeOpts = ['Port Day','Day at Sea','Embarkation','Debarkation']
+      .map(v => `<option value="${v}" ${(s.dayType||'Port Day')===v?'selected':''}>${v}</option>`).join('');
+    return `
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Date</label>
+          <input id="f-date" type="date" value="${s.date||''}">
+        </div>
+        <div class="form-group">
+          <label>Day Type</label>
+          <select id="f-daytype">${typeOpts}</select>
+        </div>
+        <div class="form-group full">
+          <label>Port / Location Name</label>
+          <input id="f-port" type="text" placeholder="e.g. Nassau, Bahamas  · At Sea  · Cozumel, Mexico" value="${h(s.port||'')}">
+        </div>
+        <div class="form-group">
+          <label>Arrival Time</label>
+          <input id="f-atime" type="time" value="${s.arrivalTime||''}">
+        </div>
+        <div class="form-group">
+          <label>Departure Time</label>
+          <input id="f-dtime" type="time" value="${s.departureTime||''}">
+        </div>
+        <div class="form-group full">
+          <label>Description / Notes</label>
+          <textarea id="f-description" placeholder="e.g. Free day ashore, scenic tender port, must be back by 5:30 PM">${h(s.description||'')}</textarea>
+        </div>
+      </div>`;
+  },
+
   transfer(t) {
     return `
       <datalist id="vtype-list">${dl_vehicle_types()}</datalist>
@@ -2788,7 +2902,7 @@ const Edit = {
 
   // ── Cruises ─────────────────────────────────────────────────
   add_cruise(itinId) {
-    const blank = {id:Date.now(),shipName:'',sailingDate:'',departTime:'',departPort:'',arrivalDate:'',arrivalTime:'',arrivePort:'',reservationNo:'',roomType:'',stateRoomNo:'',deckNumber:'',noOfNights:'',diningTime:'',guest1:'',guest2:'',price:null,totalPrice:null,priceDue:null,bookedThrough:'',comments:'',perks:[],activities:[]};
+    const blank = {id:Date.now(),shipName:'',sailingDate:'',departTime:'',departPort:'',arrivalDate:'',arrivalTime:'',arrivePort:'',reservationNo:'',roomType:'',stateRoomNo:'',deckNumber:'',noOfNights:'',diningTime:'',guest1:'',guest2:'',price:null,totalPrice:null,priceDue:null,bookedThrough:'',comments:'',perks:[],itinerary:[],activities:[]};
     Modal.show('Add Cruise', Forms.cruise(blank), 'Add', () => {
       Edit._read_cruise(blank);
       find_itin(itinId).cruises.push(blank);
@@ -2858,6 +2972,41 @@ const Edit = {
   delete_cruise_activity(itinId, cruiseIdx, actIdx) {
     if (!confirm('Delete this activity?')) return;
     find_itin(itinId).cruises[cruiseIdx].activities.splice(actIdx, 1);
+    App.render(); App.saveData();
+  },
+
+  // ── Cruise Itinerary Stops ───────────────────────────────────
+  add_cruise_stop(itinId, cruiseIdx) {
+    const cruise = find_itin(itinId).cruises[cruiseIdx];
+    if (!cruise.itinerary) cruise.itinerary = [];
+    const blank = {date:'',dayType:'Port Day',port:'',arrivalTime:'',departureTime:'',description:''};
+    Modal.show('Add Itinerary Stop', Forms.cruise_stop(blank), 'Add', () => {
+      Edit._read_cruise_stop(blank);
+      cruise.itinerary.push(blank);
+      Modal.hide(); App.render(); App.saveData();
+    });
+  },
+
+  edit_cruise_stop(itinId, cruiseIdx, stopIdx) {
+    const s = find_itin(itinId).cruises[cruiseIdx].itinerary[stopIdx];
+    Modal.show('Edit Itinerary Stop', Forms.cruise_stop(s), 'Save', () => {
+      Edit._read_cruise_stop(s);
+      Modal.hide(); App.render(); App.saveData();
+    });
+  },
+
+  _read_cruise_stop(s) {
+    s.date          = gv('#f-date')||null;
+    s.dayType       = gv('#f-daytype')||'Port Day';
+    s.port          = gv('#f-port');
+    s.arrivalTime   = gv('#f-atime')||null;
+    s.departureTime = gv('#f-dtime')||null;
+    s.description   = gv('#f-description');
+  },
+
+  delete_cruise_stop(itinId, cruiseIdx, stopIdx) {
+    if (!confirm('Delete this itinerary stop?')) return;
+    find_itin(itinId).cruises[cruiseIdx].itinerary.splice(stopIdx, 1);
     App.render(); App.saveData();
   },
 
