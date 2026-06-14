@@ -1186,6 +1186,7 @@ const Views = {
           <div class="component-actions">
             <button class="btn-edit" onclick="Edit.edit_segment(${itin.id},${f.id},${si})">Edit</button>
             <button class="btn-edit" onclick="Edit.copy_segment(${itin.id},${f.id},${si})" title="Copy segment (clears passenger &amp; seat)">Copy</button>
+            <button class="btn-edit" onclick="Edit.move_segment(${itin.id},${f.id},${si})" title="Move to another flight booking">Move</button>
             <button class="btn-del" onclick="Edit.delete_segment(${itin.id},${f.id},${si})">Del</button>
           </div>
         </div>`).join('');
@@ -2822,6 +2823,43 @@ const Edit = {
     const copy = {...orig, passengerName: '', seatNo: ''};
     f.segments.splice(segIdx + 1, 0, copy);
     App.render(); App.saveData();
+  },
+
+  move_segment(itinId, flightId, segIdx) {
+    const itin = find_itin(itinId);
+    const srcFlight = itin.flights.find(x=>x.id===flightId);
+    const seg = srcFlight.segments[segIdx];
+    const segDesc = [seg.departCity, seg.arriveCity].filter(Boolean).join(' → ') || `Segment ${segIdx+1}`;
+
+    const otherFlights = itin.flights.filter(x=>x.id!==flightId);
+    if (!otherFlights.length) {
+      alert('No other flight bookings to move this segment to. Add another flight booking first.');
+      return;
+    }
+
+    const opts = otherFlights.map(f => {
+      const route = f.segments.length
+        ? `${f.segments[0].departCity||'?'} → ${f.segments[f.segments.length-1].arriveCity||'?'}`
+        : (f.confirmationNo ? `Conf# ${f.confirmationNo}` : 'Empty flight');
+      return `<option value="${f.id}">${route}${f.confirmationNo?' ('+f.confirmationNo+')':''}</option>`;
+    }).join('');
+
+    const body = `
+      <div class="form-group">
+        <label>Moving segment: <strong>${h(segDesc)}</strong></label>
+      </div>
+      <div class="form-group">
+        <label>Destination Flight Booking</label>
+        <select id="f-dest-flight">${opts}</select>
+      </div>`;
+
+    Modal.show('Move Segment', body, 'Move', () => {
+      const destId = parseInt(document.getElementById('f-dest-flight').value);
+      const destFlight = itin.flights.find(x=>x.id===destId);
+      srcFlight.segments.splice(segIdx, 1);
+      destFlight.segments.push(seg);
+      Modal.hide(); App.render(); App.saveData();
+    });
   },
 
   // ── Hotels ──────────────────────────────────────────────────
