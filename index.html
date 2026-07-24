@@ -1500,6 +1500,7 @@ const Views = {
           <div class="price-box">${a.price ? fmt_money(a.price) : ''}</div>
           <div class="component-actions" style="flex-direction:column">
             <button class="btn-edit" onclick="Edit.edit_activity(${itin.id},${idx})">Edit</button>
+            <button class="btn-edit" onclick="Edit.copy_activity(${itin.id},${idx})">Copy</button>
             <button class="btn-move" onclick="Edit.move_component(${itin.id},'activities',${idx})">Move</button>
             <button class="btn-del" onclick="Edit.delete_activity(${itin.id},${idx})">Del</button>
           </div>
@@ -1598,6 +1599,7 @@ const Views = {
         <div class="note-item">${h(n.note)}</div>
         <div class="component-actions" style="position:absolute;top:10px;right:10px">
           <button class="btn-edit" onclick="Edit.edit_note(${itin.id},${idx})">Edit</button>
+          <button class="btn-edit" onclick="Edit.copy_note(${itin.id},${idx})">Copy</button>
           <button class="btn-del" onclick="Edit.delete_note(${itin.id},${idx})">Del</button>
         </div>
       </div>`).join('');
@@ -3099,6 +3101,25 @@ const Edit = {
     App.render(); App.saveData();
   },
 
+  copy_activity(itinId, idx) {
+    const trips = State.data.itineraries;
+    const opts = trips.map(t =>
+      `<option value="${t.id}">${h(t.title||'Unnamed')}${t.id===itinId?' (this trip)':''}</option>`
+    ).join('');
+    Modal.show('Copy Activity To…', `
+      <div class="form-group">
+        <label>Destination trip</label>
+        <select id="f-copy-dest">${opts}</select>
+      </div>`, 'Copy', () => {
+      const destId = Number(gv('#f-copy-dest'));
+      const copy = Object.assign({}, find_itin(itinId).activities[idx]);
+      const dest = find_itin(destId);
+      dest.activities.push(copy);
+      dest.activities.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+      Modal.hide(); App.render(); App.saveData();
+    });
+  },
+
   // ── Transfers ───────────────────────────────────────────────
   add_transfer(itinId) {
     const blank = {vehicleType:'',whenUsed:'',confirmationNo:'',passengers:null,pickupDate:'',pickupTime:'',pickupLocation:'',dropOffDate:'',dropOffTime:'',dropOffLocation:'',priceQuoted:null,priceDue:null,pricePer:'',howPaid:'',bookedThrough:'',comments:''};
@@ -3311,6 +3332,23 @@ const Edit = {
     if (!confirm('Delete this note?')) return;
     find_itin(itinId).notes.splice(idx,1);
     App.render(); App.saveData();
+  },
+
+  copy_note(itinId, idx) {
+    const trips = State.data.itineraries;
+    const opts = trips.map(t =>
+      `<option value="${t.id}">${h(t.title||'Unnamed')}${t.id===itinId?' (this trip)':''}</option>`
+    ).join('');
+    Modal.show('Copy Note To…', `
+      <div class="form-group">
+        <label>Destination trip</label>
+        <select id="f-copy-dest">${opts}</select>
+      </div>`, 'Copy', () => {
+      const destId = Number(gv('#f-copy-dest'));
+      const copy = Object.assign({}, find_itin(itinId).notes[idx], {id: Date.now()});
+      find_itin(destId).notes.push(copy);
+      Modal.hide(); App.render(); App.saveData();
+    });
   },
 };
 
