@@ -412,6 +412,137 @@
       margin-bottom: 10px;
     }
 
+    /* Outfit planner */
+    .of-day { margin-bottom: 20px; }
+    .of-day-head {
+      display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+      padding:0 2px 8px; border-bottom:2px solid var(--border); margin-bottom:10px;
+    }
+    .of-day-head .num {
+      background:var(--navy); color:white; font-size:11px; font-weight:800;
+      padding:3px 9px; border-radius:20px; letter-spacing:.4px;
+    }
+    .of-day-head .date { font-size:14.5px; font-weight:700; }
+    .of-day-head .ctx  { font-size:12px; color:var(--muted); }
+    .of-card {
+      display:flex; gap:13px; background:var(--card); border:1px solid var(--border);
+      border-radius:11px; padding:12px; margin-bottom:9px; box-shadow:var(--shadow);
+    }
+    .of-thumb {
+      width:78px; height:98px; flex-shrink:0; border-radius:8px; overflow:hidden;
+      background:var(--bg); border:1px solid var(--border);
+      display:flex; align-items:center; justify-content:center; cursor:pointer;
+      font-size:22px; color:#cbd5e1; position:relative;
+    }
+    .of-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .of-thumb .cam { font-size:11px; font-weight:700; color:#94a3b8; text-align:center; line-height:1.3; padding:4px; }
+    .of-body { flex:1; min-width:0; }
+    .of-slot {
+      display:inline-block; font-size:10.5px; font-weight:800; text-transform:uppercase;
+      letter-spacing:.5px; padding:2px 8px; border-radius:20px; margin-bottom:5px;
+    }
+    .of-slot-Travel  { background:#dbeafe; color:#1d4ed8; }
+    .of-slot-Daytime { background:#dcfce7; color:#166534; }
+    .of-slot-Evening { background:#ede9fe; color:#5b21b6; }
+    .of-slot-Formal  { background:#fce7f3; color:#9d174d; }
+    .of-slot-Beach   { background:#cffafe; color:#155e75; }
+    .of-slot-Active  { background:#ffedd5; color:#9a3412; }
+    .of-label { font-size:14px; font-weight:700; margin-bottom:5px; }
+    .of-garments { display:flex; flex-wrap:wrap; gap:5px; }
+    .of-g {
+      font-size:12px; background:var(--bg); border:1px solid var(--border);
+      border-radius:20px; padding:3px 10px; display:inline-flex; align-items:center; gap:5px;
+    }
+    .of-g.reused { background:#fffbeb; border-color:#fde68a; }
+    .of-g .n { font-size:10px; font-weight:800; color:#b45309; }
+    .of-empty-g { font-size:12.5px; color:var(--muted); font-style:italic; }
+    .of-acts { display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
+    .of-laundry {
+      background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px;
+      padding:11px 14px; font-size:13px; color:#1e40af; margin-bottom:16px; line-height:1.5;
+    }
+    .of-wardrobe-grid {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(132px,1fr)); gap:12px;
+    }
+    .of-w-card {
+      background:var(--card); border:1px solid var(--border); border-radius:10px;
+      overflow:hidden; box-shadow:var(--shadow); position:relative;
+    }
+    .of-w-photo {
+      height:120px; background:var(--bg); display:flex; align-items:center;
+      justify-content:center; font-size:30px; color:#cbd5e1; cursor:pointer;
+    }
+    .of-w-photo img { width:100%; height:100%; object-fit:cover; display:block; }
+    .of-w-meta { padding:8px 10px; }
+    .of-w-meta .nm { font-size:12.5px; font-weight:700; line-height:1.3; }
+    .of-w-meta .sub { font-size:11px; color:var(--muted); margin-top:2px; }
+    .of-pick-cat { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin:12px 0 6px; }
+    .of-pick {
+      display:flex; align-items:center; gap:9px; padding:7px 10px; border:1px solid var(--border);
+      border-radius:8px; margin-bottom:5px; cursor:pointer; font-size:13.5px;
+    }
+    .of-pick:hover { background:#f8fafc; }
+    .of-pick.on { background:#eff6ff; border-color:#93c5fd; }
+    .of-pick .bx {
+      width:19px; height:19px; border:2px solid #cbd5e1; border-radius:5px; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center; font-size:12px; color:transparent; background:white;
+    }
+    .of-pick.on .bx { background:var(--blue); border-color:var(--blue); color:white; }
+    .of-pick img { width:30px; height:30px; object-fit:cover; border-radius:5px; flex-shrink:0; }
+    .of-lightbox {
+      position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:500;
+      display:flex; align-items:center; justify-content:center; padding:20px; cursor:zoom-out;
+    }
+    .of-lightbox img { max-width:100%; max-height:100%; border-radius:8px; }
+
+    /* Packing list */
+    .pack-progress-wrap { background: var(--card); border:1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 16px; box-shadow: var(--shadow); }
+    .pack-progress-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+    .pack-progress-top .count { font-size:15px; font-weight:700; }
+    .pack-progress-top .pct { font-size:13px; color:var(--muted); font-weight:600; }
+    .pack-bar { height:8px; background:#e2e8f0; border-radius:20px; overflow:hidden; }
+    .pack-bar > div { height:100%; background:linear-gradient(90deg,#22c55e,#16a34a); border-radius:20px; transition:width .25s ease; }
+    .pack-cat { margin-bottom:18px; }
+    .pack-cat h4 {
+      font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.6px;
+      color:var(--muted); margin-bottom:8px; display:flex; align-items:center; gap:6px;
+    }
+    .pack-item {
+      display:flex; align-items:flex-start; gap:11px; padding:10px 12px; background:var(--card);
+      border:1px solid var(--border); border-radius:9px; margin-bottom:6px; cursor:pointer;
+      transition:background .12s, opacity .12s;
+    }
+    .pack-item:hover { background:#f8fafc; }
+    .pack-item .box {
+      flex-shrink:0; width:21px; height:21px; border:2px solid #cbd5e1; border-radius:6px;
+      display:flex; align-items:center; justify-content:center; font-size:13px; color:transparent;
+      transition:all .12s; margin-top:1px; background:white;
+    }
+    .pack-item.checked { opacity:.55; background:#f8fafc; }
+    .pack-item.checked .box { background:#16a34a; border-color:#16a34a; color:white; }
+    .pack-item.checked .txt { text-decoration:line-through; }
+    .pack-item .body { flex:1; min-width:0; }
+    .pack-item .txt { font-size:14px; font-weight:500; line-height:1.35; }
+    .pack-item .why { font-size:11.5px; color:var(--muted); margin-top:2px; }
+    .pack-item .rm {
+      flex-shrink:0; background:none; border:none; color:#cbd5e1; font-size:17px; line-height:1;
+      cursor:pointer; padding:2px 4px; border-radius:5px;
+    }
+    .pack-item .rm:hover { color:var(--red); background:#fef2f2; }
+    .pack-src { font-size:10px; font-weight:700; padding:1px 6px; border-radius:20px; text-transform:uppercase; letter-spacing:.3px; margin-left:6px; vertical-align:1px; }
+    .pack-src-suggested { background:#ede9fe; color:#5b21b6; }
+    .pack-src-personal  { background:#fce7f3; color:#9d174d; }
+    .pack-build {
+      background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+      padding:28px 24px; text-align:center; box-shadow:var(--shadow);
+    }
+    .pack-build .preview { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:16px 0 20px; }
+    .pack-build .pv {
+      background:var(--bg); border:1px solid var(--border); border-radius:9px;
+      padding:10px 16px; font-size:13px; min-width:104px;
+    }
+    .pack-build .pv b { display:block; font-size:21px; font-weight:800; color:var(--navy); }
+
     /* Ground transfers */
     .transfer-card {
       border: 1px solid var(--border); border-radius: var(--radius);
@@ -898,6 +1029,7 @@ let State = {
   tripId: null,
   tripTab: 'flights',
   refKey: null,
+  outfitView: 'days',
   searchQ: '',
   searchYear: '',
   dirty: false,
@@ -1078,6 +1210,8 @@ const Views = {
       trains:    (itin.trains||[]).length,
       notes:     itin.notes.length,
       files:     (itin.attachments||[]).length,
+      packing:   (itin.packingList||[]).length,
+      outfits:   (itin.outfits||[]).length,
     };
     const dur = itin.startDate && itin.endDate
       ? `${fmt_date_short(itin.startDate)} – ${fmt_date(itin.endDate)}`
@@ -1103,6 +1237,8 @@ const Views = {
       ['trains','🚂 Trains',counts.trains],
       ['notes','📝 Notes',counts.notes],
       ['files','📎 Files',counts.files],
+      ['packing','🧳 Packing',counts.packing],
+      ['outfits','👗 Outfits',counts.outfits],
     ].filter(([,, c]) => c > 0 || ['flights','hotels','notes'].includes(arguments[0]));
 
     let tabContent = '';
@@ -1115,6 +1251,8 @@ const Views = {
     else if (tab === 'trains')    tabContent = Views._trains(itin);
     else if (tab === 'notes')     tabContent = Views._notes(itin);
     else if (tab === 'files')     tabContent = Views._files(itin);
+    else if (tab === 'packing')   tabContent = Views._packing(itin);
+    else if (tab === 'outfits')   tabContent = Views._outfits(itin);
 
     const visibleTabs = [
       ['flights',   '✈ Flights',    counts.flights],
@@ -1126,6 +1264,8 @@ const Views = {
       ['trains',    '🚂 Trains',    counts.trains],
       ['notes',     '📝 Notes',     counts.notes],
       ['files',     '📎 Files',     counts.files],
+      ['packing',   '🧳 Packing',   counts.packing],
+      ['outfits',   '👗 Outfits',   counts.outfits],
     ];
     if (!visibleTabs.find(t=>t[0]===tab)) State.tripTab = visibleTabs[0]?.[0] || 'flights';
 
@@ -1623,6 +1763,248 @@ const Views = {
         </div>`).join('') + `</div>`;
   },
 
+  _outfits(itin) {
+    if (!itin.startDate) {
+      return `<div class="empty-state"><div class="icon">👗</div>
+        <p>Add a start and end date to this trip first —<br>the outfit planner works day by day.</p>
+        <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="Edit.trip(${itin.id})">✏️ Edit Trip Dates</button>
+      </div>`;
+    }
+
+    const days     = Outfits.days(itin);
+    const outfits  = itin.outfits || [];
+    const wardrobe = itin.wardrobe || [];
+    const wm       = Outfits.wearMap(itin);
+    const laundry  = new Set(Outfits.laundryDays(itin));
+    const toPlan   = Outfits.plannableCount(itin);
+    const dressed  = outfits.filter(o => (o.items || []).length || o.photo).length;
+
+    // ── Wardrobe / what-to-pack view ──
+    if (State.outfitView === 'wardrobe') {
+      const sum = Outfits.summary(itin).sort((a, b) =>
+        Outfits.CATS.indexOf(a.cat) - Outfits.CATS.indexOf(b.cat) || a.name.localeCompare(b.name));
+      const unworn = sum.filter(g => !g.wears).length;
+      return `
+        <button class="btn btn-secondary btn-sm" style="margin-bottom:16px"
+          onclick="State.outfitView='days';App.render_content()">← Back to Days</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+          <button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_garment(${itin.id})">+ Add Garment</button>
+          ${wardrobe.length ? `<button class="btn btn-secondary btn-sm" onclick="Edit.wardrobe_to_packing(${itin.id})">→ Add to Packing List</button>` : ''}
+        </div>
+        ${!sum.length ? `<div class="empty-state"><div class="icon">👕</div><p>No garments yet. Add them here, or straight from a day's outfit.</p></div>` : `
+          ${unworn ? `<div class="of-laundry" style="background:#fffbeb;border-color:#fde68a;color:#92400e">
+            ${unworn} garment${unworn>1?"s aren't":" isn't"} used in any outfit yet.</div>` : ''}
+          ${Outfits.CATS.map(cat => {
+            const gs = sum.filter(g => g.cat === cat);
+            if (!gs.length) return '';
+            return `
+              <div class="pack-cat">
+                <h4>${Outfits.CAT_ICON[cat]} ${cat} <span style="font-weight:600;color:#cbd5e1">${gs.length}</span></h4>
+                <div class="of-wardrobe-grid">
+                  ${gs.map(g => `
+                    <div class="of-w-card">
+                      <div class="of-w-photo" onclick="${g.photo ? `Photos.lightbox('${h(g.photo)}')` : `Edit.garment_photo(${itin.id},${g.id})`}">
+                        ${g.photo ? `<img data-photo="${h(g.photo)}" alt="${h(g.name)}">` : '📷'}
+                      </div>
+                      <div class="of-w-meta">
+                        <div class="nm">${h(g.name)}</div>
+                        <div class="sub">${g.wears ? `Worn ${g.wears}×` : 'Not used yet'}${
+                          Outfits.overWorn(itin, g.dates) ? ' · <span style="color:#b45309;font-weight:700">needs laundry</span>' : ''}</div>
+                        <div style="display:flex;gap:4px;margin-top:7px">
+                          <button class="btn-edit" style="flex:1" onclick="Edit.edit_garment(${itin.id},${g.id})">Edit</button>
+                          <button class="btn-del" onclick="Edit.delete_garment(${itin.id},${g.id})">×</button>
+                        </div>
+                      </div>
+                    </div>`).join('')}
+                </div>
+              </div>`;
+          }).join('')}`}`;
+    }
+
+    // ── Day-by-day view ──
+    if (!outfits.length) {
+      const preview = days.slice(0, 3).map(d =>
+        `${fmt_date_short(d)}: ${Outfits.slotsFor(itin, d).map(s => s.slot).join(' + ')}`).join('<br>');
+      return `
+        <div class="pack-build">
+          <div style="font-size:44px;margin-bottom:6px">👗</div>
+          <div style="font-size:18px;font-weight:800;margin-bottom:4px">Plan your outfits day by day</div>
+          <div style="font-size:13.5px;color:var(--muted);max-width:460px;margin:0 auto;line-height:1.5">
+            We'll lay out all ${days.length} day${days.length!==1?'s':''} of this trip and work out how many
+            outfits each needs — travel days, and a second outfit whenever there's a dinner or evening event.
+            Then add garments and photos to each.
+          </div>
+          <div class="preview">
+            <div class="pv"><b>${days.length}</b>day${days.length!==1?'s':''}</div>
+            <div class="pv"><b>${toPlan}</b>outfit${toPlan!==1?'s':''}</div>
+          </div>
+          ${preview ? `<div style="font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.8">${preview}${days.length>3?'<br>…':''}</div>` : ''}
+          <button class="btn btn-primary" onclick="Edit.autoplan_outfits(${itin.id})">🪄 Plan my ${days.length} days</button>
+        </div>`;
+    }
+
+    const laundryNote = laundry.size ? `
+      <div class="of-laundry">
+        🧺 <strong>${Outfits.nights(itin)}-night trip</strong> — laundry assumed around
+        ${[...laundry].map(d => fmt_date_short(d)).join(' and ')}, so tops and bottoms can repeat.
+        Garments worn a lot between washes are flagged.
+      </div>` : '';
+
+    return `
+      <div class="pack-progress-wrap">
+        <div class="pack-progress-top">
+          <span class="count">${dressed} of ${outfits.length} outfits planned</span>
+          <span class="pct">${Math.round(dressed / outfits.length * 100)}%</span>
+        </div>
+        <div class="pack-bar"><div style="width:${Math.round(dressed / outfits.length * 100)}%"></div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        ${toPlan ? `<button class="btn-import-comp" onclick="Edit.autoplan_outfits(${itin.id})">🪄 Plan my days (${toPlan})</button>` : ''}
+        <button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_garment(${itin.id})">+ Add Garment</button>
+        <button class="btn btn-secondary btn-sm" onclick="State.outfitView='wardrobe';App.render_content()">👕 Wardrobe (${wardrobe.length})</button>
+        ${wardrobe.length ? `<button class="btn btn-secondary btn-sm" onclick="Edit.wardrobe_to_packing(${itin.id})">→ Add to Packing List</button>` : ''}
+      </div>
+      ${laundryNote}
+      ${days.map((date, i) => {
+        const dayOutfits = Outfits.forDate(itin, date);
+        const info = Outfits.dayInfo(itin, date);
+        const ctx = [...info.travel, ...info.daytime, ...info.evening].slice(0, 2).join(' · ');
+        return `
+          <div class="of-day">
+            <div class="of-day-head">
+              <span class="num">DAY ${i + 1}</span>
+              <span class="date">${fmt_date(date)}</span>
+              ${ctx ? `<span class="ctx">${h(ctx)}</span>` : ''}
+              ${laundry.has(date) ? '<span class="ctx">🧺 laundry</span>' : ''}
+            </div>
+            ${dayOutfits.map(o => {
+              const gs = (o.items || []).map(id => Outfits.garment(itin, id)).filter(Boolean);
+              return `
+                <div class="of-card">
+                  <div class="of-thumb" onclick="${o.photo ? `Photos.lightbox('${h(o.photo)}')` : `Edit.outfit_photo(${itin.id},${o.id})`}">
+                    ${o.photo ? `<img data-photo="${h(o.photo)}" alt="outfit">` : '<div class="cam">📷<br>Add photo</div>'}
+                  </div>
+                  <div class="of-body">
+                    <span class="of-slot of-slot-${o.slot}">${o.slot}</span>
+                    ${o.label ? `<div class="of-label">${h(o.label)}</div>` : ''}
+                    <div class="of-garments">
+                      ${gs.length ? gs.map(g => {
+                        const wears = (wm.get(g.id) || []).length;
+                        return `<span class="of-g ${wears > 1 ? 'reused' : ''}">${Outfits.CAT_ICON[g.cat] || '👕'} ${h(g.name)}${
+                          wears > 1 ? `<span class="n">${wears}×</span>` : ''}</span>`;
+                      }).join('') : '<span class="of-empty-g">No garments picked yet</span>'}
+                    </div>
+                    ${o.notes ? `<div style="font-size:12px;color:var(--muted);margin-top:6px">${h(o.notes)}</div>` : ''}
+                  </div>
+                  <div class="of-acts">
+                    <button class="btn-edit" onclick="Edit.edit_outfit(${itin.id},${o.id})">Edit</button>
+                    <button class="btn-edit" onclick="Edit.outfit_photo(${itin.id},${o.id})">📷</button>
+                    <button class="btn-del" onclick="Edit.delete_outfit(${itin.id},${o.id})">×</button>
+                  </div>
+                </div>`;
+            }).join('')}
+            <button class="btn-add-comp" style="margin-bottom:0;font-size:12px;padding:5px 11px"
+              onclick="Edit.add_outfit(${itin.id},'${date}')">+ Another outfit for this day</button>
+          </div>`;
+      }).join('')}`;
+  },
+
+  _packing(itin) {
+    const list = itin.packingList || [];
+
+    // Empty list → one-tap build panel with a preview of what's coming.
+    if (!list.length) {
+      const ess = Packing.essentials(itin);
+      const sug = Packing.suggest(itin);
+      const reasons = [...new Set(sug.map(s => s.reason))];
+      return `
+        <div class="pack-build">
+          <div style="font-size:44px;margin-bottom:6px">🧳</div>
+          <div style="font-size:18px;font-weight:800;margin-bottom:4px">Build your packing list</div>
+          <div style="font-size:13.5px;color:var(--muted);max-width:440px;margin:0 auto;line-height:1.5">
+            We'll start you off with your essentials plus items suggested from this trip's
+            destinations, dates, and bookings. Everything is editable afterwards.
+          </div>
+          <div class="preview">
+            <div class="pv"><b>${ess.length}</b>essential${ess.length!==1?'s':''}</div>
+            <div class="pv"><b>${sug.length}</b>suggestion${sug.length!==1?'s':''}</div>
+          </div>
+          ${reasons.length ? `
+            <div style="font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.7">
+              Based on: ${reasons.map(r=>`<span class="chip" style="font-size:11.5px">${h(r)}</span>`).join(' ')}
+            </div>` : ''}
+          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="Edit.build_packing(${itin.id})"
+              ${!ess.length && !sug.length ? 'disabled style="opacity:.5"' : ''}>
+              ✨ Build my list (${ess.length + sug.length} items)
+            </button>
+            <button class="btn btn-secondary" onclick="Edit.add_pack_item(${itin.id})">+ Add item manually</button>
+          </div>
+          ${!ess.length ? `
+            <div style="font-size:12px;color:var(--muted);margin-top:16px">
+              Tip: add your always-pack items under
+              <a href="#" onclick="event.preventDefault();Router.goRef('packingEssentials')" style="color:var(--blue);font-weight:600">Reference Data → Packing Essentials</a>,
+              and personal items (CPAP, medications) on each traveller.
+            </div>` : ''}
+        </div>`;
+    }
+
+    const done    = list.filter(p => p.checked).length;
+    const pct     = Math.round(done / list.length * 100);
+    const newSugg = Packing.missing(itin).length;
+
+    // Group by category, preserving CATS order.
+    const groups = Packing.CATS
+      .map(c => [c, list.filter(p => (p.category || 'Other') === c)])
+      .filter(([, items]) => items.length);
+    const known = new Set(Packing.CATS);
+    const orphans = list.filter(p => !known.has(p.category || 'Other'));
+    if (orphans.length) groups.push(['Other', orphans]);
+
+    const row = (p) => `
+      <div class="pack-item ${p.checked ? 'checked' : ''}" id="pack-${p.id}"
+           onclick="Edit.toggle_pack(${itin.id},${p.id})">
+        <div class="box">✓</div>
+        <div class="body">
+          <div class="txt">${h(p.item)}${
+            p.source === 'suggested' ? '<span class="pack-src pack-src-suggested">suggested</span>' :
+            p.source === 'personal'  ? '<span class="pack-src pack-src-personal">personal</span>'  : ''
+          }</div>
+          ${p.reason ? `<div class="why">${h(p.reason)}</div>` : ''}
+        </div>
+        <button class="rm" title="Remove"
+          onclick="event.stopPropagation();Edit.delete_pack_item(${itin.id},${p.id})">×</button>
+      </div>`;
+
+    return `
+      <div class="pack-progress-wrap">
+        <div class="pack-progress-top">
+          <span class="count" id="pack-count">${done} of ${list.length} packed</span>
+          <span class="pct" id="pack-pct">${pct}%</span>
+        </div>
+        <div class="pack-bar"><div id="pack-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+        <button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_pack_item(${itin.id})">+ Add Item</button>
+        <button class="btn-import-comp" onclick="Edit.rescan_packing(${itin.id})">
+          ✨ Find new suggestions${newSugg ? ` (${newSugg})` : ''}
+        </button>
+        ${done ? `<button class="btn btn-secondary btn-sm" onclick="Edit.uncheck_packing(${itin.id})">↺ Uncheck all</button>` : ''}
+        <button class="btn btn-secondary btn-sm" onclick="Edit.clear_packing(${itin.id})">🗑 Clear list</button>
+      </div>
+
+      ${groups.map(([cat, items]) => `
+        <div class="pack-cat">
+          <h4>${Packing.ICON[cat] || '📦'} ${cat}
+            <span style="font-weight:600;color:#cbd5e1">
+              ${items.filter(i=>i.checked).length}/${items.length}
+            </span>
+          </h4>
+          ${items.map(row).join('')}
+        </div>`).join('')}`;
+  },
+
   // ── Travellers ──────────────────────────────────────────────
   travellers() {
     const tv = State.data.travellers;
@@ -1646,6 +2028,7 @@ const Views = {
               t.airlinePref1? ['Airline 1',    t.airlinePref1]: null,
               t.airlinePref2? ['Airline 2',    t.airlinePref2]: null,
               t.tsaPrecheck ? ['TSA Pre✓',     t.tsaPrecheck] : null,
+              (t.packingEssentials||[]).length ? ['🧳 Packing items', (t.packingEssentials||[]).length] : null,
             ].filter(Boolean).map(([l,v])=>`
               <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)">
                 <span style="color:var(--muted)">${l}</span>
@@ -1779,6 +2162,7 @@ const App = {
           }
         }
         State.data = data;
+        this.migrate();
         this.show_app();
         Router.go('dashboard');
       } catch(e) {
@@ -1788,6 +2172,22 @@ const App = {
     } else {
       this.show_setup();
     }
+  },
+
+  // Backfill fields added after a data file was first written.
+  migrate() {
+    const d = State.data;
+    if (!d) return;
+    d.reference = d.reference || {};
+    if (!Array.isArray(d.reference.packingEssentials)) d.reference.packingEssentials = [];
+    (d.travellers || []).forEach(t => {
+      if (!Array.isArray(t.packingEssentials)) t.packingEssentials = [];
+    });
+    (d.itineraries || []).forEach(i => {
+      if (!Array.isArray(i.packingList)) i.packingList = [];
+      if (!Array.isArray(i.wardrobe))    i.wardrobe    = [];
+      if (!Array.isArray(i.outfits))     i.outfits     = [];
+    });
   },
 
   async load_initial_data() {
@@ -1852,9 +2252,20 @@ const App = {
     else if (State.view === 'ref_home')   el.innerHTML = Views.ref_home();
     else if (State.view === 'ref_list')   el.innerHTML = Views.ref_list(State.refKey);
     else el.innerHTML = `<div class="card"><p>View not found.</p></div>`;
+    Photos.hydrate();
+  },
+
+  // Coalesces rapid-fire changes (e.g. ticking packing boxes) into one upload.
+  _saveTimer: null,
+  saveSoon() {
+    clearTimeout(App._saveTimer);
+    const status = $('#save-status');
+    if (status) status.textContent = 'Unsaved changes…';
+    App._saveTimer = setTimeout(() => App.saveData(), 1500);
   },
 
   async saveData() {
+    clearTimeout(App._saveTimer);
     const btn = document.querySelector('.save-btn');
     const status = $('#save-status');
     btn.disabled = true;
@@ -1888,6 +2299,7 @@ const App = {
       endDestination: $('#f-to').value.trim() || null,
       flights: [], hotels: [], rentalCars: [], cruises: [],
       activities: [], groundTransfers: [], trains: [], notes: [], attachments: [],
+      packingList: [], wardrobe: [], outfits: [],
     };
     State.data.itineraries.unshift(trip);
     State.dirty = true;
@@ -2671,7 +3083,487 @@ const Forms = {
           <label>TSA Pre✓ / Known Traveler #</label>
           <input id="tv-tsa" type="text" value="${h(t.tsaPrecheck||'')}">
         </div>
+        <div class="form-group full">
+          <label>🧳 Personal Packing Essentials</label>
+          <textarea id="tv-packing" style="min-height:110px" placeholder="One item per line, e.g.&#10;CPAP machine&#10;Blood pressure medication&#10;Reading glasses">${h((t.packingEssentials||[]).join('\n'))}</textarea>
+          <p class="hint" style="margin-top:6px">Items only this person packs. Added automatically to trips where they're the traveller — alongside the shared household list in Reference Data.</p>
+        </div>
       </div>`;
+  },
+};
+
+// ══════════════════════════════════════════════════════════════
+//  PHOTOS  (camera/library capture → downscale → Dropbox)
+// ══════════════════════════════════════════════════════════════
+const Photos = {
+  _urls: new Map(),   // dropbox path → temporary link (valid ~4h)
+
+  // Opens the iOS sheet offering Take Photo / Photo Library.
+  pick() {
+    return new Promise(resolve => {
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.accept = 'image/*';
+      inp.onchange = e => resolve(e.target.files[0] || null);
+      inp.click();
+    });
+  },
+
+  // Phone photos are 3-5MB; shrink before upload so Dropbox stays tidy
+  // and thumbnails load quickly over cellular.
+  async downscale(file, maxDim = 1400, quality = 0.82) {
+    if (!file || !file.type.startsWith('image/')) return file;
+    try {
+      let bmp;
+      if (window.createImageBitmap) {
+        // from-image applies EXIF rotation, so phone photos aren't sideways.
+        bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      } else {
+        bmp = await new Promise((res, rej) => {
+          const i = new Image(), u = URL.createObjectURL(file);
+          i.onload = () => { URL.revokeObjectURL(u); res(i); };
+          i.onerror = rej; i.src = u;
+        });
+      }
+      const w = bmp.width, hgt = bmp.height;
+      const scale = Math.min(1, maxDim / Math.max(w, hgt));
+      const cw = Math.round(w * scale), ch = Math.round(hgt * scale);
+      const c = document.createElement('canvas');
+      c.width = cw; c.height = ch;
+      c.getContext('2d').drawImage(bmp, 0, 0, cw, ch);
+      if (bmp.close) bmp.close();
+      const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', quality));
+      return blob && blob.size < file.size ? blob : file;
+    } catch (e) {
+      return file;   // fall back to the original rather than losing the photo
+    }
+  },
+
+  async upload(itinId, file) {
+    const small = await Photos.downscale(file);
+    const stamp = Date.now();
+    const safe  = (file.name || 'photo.jpg').replace(/[^\w.\-]/g, '_');
+    const meta  = await DB.uploadFile(`/outfits/${itinId}/${stamp}-${safe}`, small);
+    return meta.path_lower || meta.path_display;
+  },
+
+  async url(path) {
+    if (Photos._urls.has(path)) return Photos._urls.get(path);
+    const link = await DB.getTempLink(path);
+    Photos._urls.set(path, link);
+    return link;
+  },
+
+  // Called after every render: swaps placeholders for real image sources.
+  hydrate() {
+    document.querySelectorAll('img[data-photo]:not([data-hydrated])').forEach(async img => {
+      img.dataset.hydrated = '1';
+      try { img.src = await Photos.url(img.dataset.photo); }
+      catch (e) { img.closest('.of-thumb, .of-w-photo')?.classList.add('failed'); }
+    });
+  },
+
+  lightbox(path) {
+    Photos.url(path).then(src => {
+      const d = document.createElement('div');
+      d.className = 'of-lightbox';
+      d.innerHTML = `<img src="${src}">`;
+      d.onclick = () => d.remove();
+      document.body.appendChild(d);
+    }).catch(e => alert('Could not open photo: ' + e.message));
+  },
+};
+
+// ══════════════════════════════════════════════════════════════
+//  PACKING LIST
+// ══════════════════════════════════════════════════════════════
+const Packing = {
+  CATS: ['Documents','Money','Health','Toiletries','Clothing','Electronics','Gear','Other'],
+  ICON: { Documents:'📄', Money:'💵', Health:'💊', Toiletries:'🧴',
+          Clothing:'👕', Electronics:'🔌', Gear:'🎒', Other:'📦' },
+
+  // Suggested starting point for the shared household list (Reference Data).
+  STARTER: [
+    'Toothbrush','Toothpaste','Deodorant','Shampoo & conditioner','Razor','Hairbrush',
+    'Phone charger','Daily medications','Sunglasses','Underwear','Socks','Pyjamas',
+  ],
+
+  // ── Destination keyword matchers ───────────────────────────
+  RE: {
+    intl: /\b(italy|france|spain|portugal|greece|germany|austria|switzerland|netherlands|belgium|ireland|scotland|england|britain|london|paris|rome|florence|venice|milan|barcelona|madrid|lisbon|athens|berlin|munich|vienna|zurich|geneva|amsterdam|brussels|dublin|edinburgh|prague|budapest|copenhagen|stockholm|oslo|helsinki|reykjavik|iceland|norway|sweden|denmark|finland|poland|croatia|slovenia|turkey|istanbul|morocco|egypt|israel|jordan|dubai|abu dhabi|uae|qatar|india|thailand|bangkok|phuket|vietnam|cambodia|laos|singapore|malaysia|indonesia|bali|japan|tokyo|kyoto|osaka|china|beijing|shanghai|hong kong|korea|seoul|taiwan|philippines|australia|sydney|melbourne|brisbane|new zealand|auckland|queenstown|fiji|tahiti|bora bora|canada|toronto|vancouver|montreal|quebec|banff|mexico|cancun|cabo|tulum|playa del carmen|puerto vallarta|costa rica|belize|panama|colombia|peru|lima|machu picchu|chile|argentina|buenos aires|patagonia|brazil|rio de janeiro|ecuador|galapagos|south africa|kenya|tanzania|botswana|bahamas|jamaica|aruba|barbados|st lucia|turks|cayman|bermuda|dominican|punta cana|antigua|curacao|martinique)\b/,
+    beach: /\b(beach|hawaii|maui|oahu|kauai|honolulu|kona|caribbean|cancun|cabo|tulum|bahamas|jamaica|aruba|barbados|st lucia|turks|cayman|bermuda|punta cana|fiji|tahiti|bora bora|bali|phuket|maldives|key west|florida keys|riviera maya|seychelles|mauritius)\b/,
+    ski: /\b(ski|skiing|snowboard|aspen|vail|breckenridge|tahoe|whistler|park city|jackson hole|steamboat|telluride|mammoth|big sky|zermatt|chamonix|st moritz|alps|banff|sun valley|deer valley)\b/,
+    // Deliberately not bare "disney" — that also matches Disney cruises and tour brands.
+    park: /\b(disneyland|disney world|walt disney|universal studios|universal orlando|orlando|magic kingdom|epcot|animal kingdom|hollywood studios|theme park|six flags|busch gardens|cedar point)\b/,
+    outdoors: /\b(national park|yellowstone|yosemite|zion|glacier|grand canyon|arches|bryce|sequoia|olympic|acadia|smoky mountains|rocky mountain|joshua tree|denali|hiking|hike|trail|camping|safari)\b/,
+    desert: /\b(phoenix|scottsdale|palm springs|tucson|sedona|death valley|moab|desert|santa fe|albuquerque)\b/,
+    walkcity: /\b(new york|nyc|manhattan|london|paris|rome|tokyo|san francisco|chicago|boston|washington dc|philadelphia|seattle|barcelona|amsterdam|florence|venice|prague|vienna|dublin|edinburgh)\b/,
+  },
+
+  // ── Suggestion rules ───────────────────────────────────────
+  RULES: [
+    { why:'You have flights booked', test:(t,i)=> i.flights.length>0, items:[
+      ['Boarding passes / airline app','Documents'],['Photo ID','Documents'],
+      ['Headphones','Electronics'],['Portable battery pack','Electronics'],
+      ['Neck pillow','Gear'],['Quart bag for liquids','Toiletries'],['Snacks for the plane','Gear']] },
+    { why:'You have a rental car', test:(t,i)=> i.rentalCars.length>0, items:[
+      ["Driver's license",'Documents'],['Phone mount / car charger','Electronics'],
+      ['Sunglasses for driving','Gear']] },
+    { why:'You have a cruise booked', test:(t,i)=> i.cruises.length>0, items:[
+      ['Formal outfit for dinner','Clothing'],['Motion sickness remedy','Health'],
+      ['Lanyard for key card','Gear'],['Swimsuit','Clothing'],
+      ['Non-surge power strip','Electronics'],['Highlighter for daily planner','Gear']] },
+    { why:'You have train travel', test:(t,i)=> (i.trains||[]).length>0, items:[
+      ['Train tickets / reservation','Documents'],['Book or e-reader','Gear'],['Snacks & water','Gear']] },
+
+    { why:'International destination', test:(t)=> Packing.RE.intl.test(t), items:[
+      ['Passport','Documents'],['Travel power adapter','Electronics'],
+      ['Local currency / travel card','Money'],['International phone plan or eSIM','Electronics'],
+      ['Copies of passport & insurance','Documents'],['Credit card with no foreign fees','Money']] },
+    { why:'Las Vegas trip', test:(t)=> /las vegas|\bvegas\b/.test(t), items:[
+      ['Cash for tips & tables','Money'],['Comfortable walking shoes','Clothing'],
+      ['Nice outfit for dinner / shows','Clothing'],['Sunglasses','Gear'],
+      ['Refillable water bottle','Gear'],['Blister bandages','Health']] },
+    { why:'Beach or tropical destination', test:(t)=> Packing.RE.beach.test(t), items:[
+      ['Swimsuit (x2)','Clothing'],['Reef-safe sunscreen','Toiletries'],
+      ['Flip flops / sandals','Clothing'],['Beach towel','Gear'],['Sun hat','Clothing'],
+      ['Cover-up','Clothing'],['After-sun lotion','Toiletries'],['Waterproof phone pouch','Gear']] },
+    { why:'Ski or snow destination', test:(t)=> Packing.RE.ski.test(t), items:[
+      ['Ski jacket & snow pants','Clothing'],['Thermal base layers','Clothing'],
+      ['Gloves / mittens','Clothing'],['Goggles','Gear'],['Helmet','Gear'],
+      ['Wool socks','Clothing'],['Lip balm with SPF','Toiletries'],['Hand warmers','Gear']] },
+    { why:'Theme park destination', test:(t)=> Packing.RE.park.test(t), items:[
+      ['Comfortable walking shoes','Clothing'],['Rain poncho','Gear'],
+      ['Portable fan / cooling towel','Gear'],['Sunscreen','Toiletries'],
+      ['Refillable water bottle','Gear'],['Blister bandages','Health'],['Portable battery pack','Electronics']] },
+    { why:'National park / hiking destination', test:(t)=> Packing.RE.outdoors.test(t), items:[
+      ['Hiking boots','Clothing'],['Daypack','Gear'],['Refillable water bottle','Gear'],
+      ['Bug spray','Toiletries'],['Binoculars','Gear'],['Rain shell','Clothing'],
+      ['Trail snacks','Gear'],['Headlamp','Gear']] },
+    { why:'Hot / desert destination', test:(t)=> Packing.RE.desert.test(t), items:[
+      ['Sun hat','Clothing'],['Electrolyte packets','Health'],['Extra water bottle','Gear'],
+      ['Light long-sleeve sun shirt','Clothing'],['Lip balm with SPF','Toiletries']] },
+    { why:'Lots of city walking', test:(t)=> Packing.RE.walkcity.test(t), items:[
+      ['Comfortable walking shoes','Clothing'],['Day bag / crossbody','Gear'],
+      ['Compact umbrella','Gear'],['Transit card or app','Documents']] },
+
+    { why:'Winter travel dates', test:(t,i,c)=> [12,1,2].includes(c.month), items:[
+      ['Warm coat','Clothing'],['Gloves','Clothing'],['Scarf','Clothing'],
+      ['Warm hat','Clothing'],['Thermal layers','Clothing'],['Moisturizer','Toiletries']] },
+    { why:'Summer travel dates', test:(t,i,c)=> [6,7,8].includes(c.month), items:[
+      ['Sunscreen','Toiletries'],['Sunglasses','Gear'],
+      ['Light breathable clothing','Clothing'],['Refillable water bottle','Gear']] },
+    { why:'Trip is a week or longer', test:(t,i,c)=> c.nights>=7, items:[
+      ['Laundry detergent packets','Other'],['Extra prescription refills','Health'],
+      ['Nail clippers','Toiletries'],['Extra memory card / storage','Electronics']] },
+
+    { why:'Golf on the itinerary', test:(t,i,c)=> /\bgolf\b/.test(c.act), items:[
+      ['Golf clubs','Gear'],['Golf shoes','Clothing'],['Golf glove','Gear'],['Golf balls & tees','Gear']] },
+    { why:'Diving or snorkelling planned', test:(t,i,c)=> /snorkel|scuba|\bdiv(e|ing)\b/.test(c.act), items:[
+      ['Mask & snorkel','Gear'],['Rash guard','Clothing'],
+      ['Reef-safe sunscreen','Toiletries'],['Dive certification card','Documents']] },
+    { why:'Wine tasting planned', test:(t,i,c)=> /wine|winery|vineyard/.test(c.act) || /napa|sonoma/.test(t), items:[
+      ['Wine tote / shipper','Gear'],['Nice casual outfit','Clothing']] },
+    { why:'Show or event planned', test:(t,i,c)=> /concert|theater|theatre|broadway|opera|\bshows?\b|musical/.test(c.act), items:[
+      ['Dressy outfit','Clothing'],['Event tickets','Documents']] },
+    { why:'Wedding on the itinerary', test:(t,i,c)=> /wedding|reception|rehearsal dinner/.test(c.act), items:[
+      ['Formal outfit','Clothing'],['Dress shoes','Clothing'],['Gift or card','Other']] },
+    { why:'Fishing planned', test:(t,i,c)=> /fishing|charter boat/.test(c.act), items:[
+      ['Fishing license','Documents'],['Polarized sunglasses','Gear'],['Waterproof jacket','Clothing']] },
+    { why:'Spa visit planned', test:(t,i,c)=> /\bspa\b|massage|hot spring|onsen/.test(c.act), items:[
+      ['Swimsuit','Clothing'],['Flip flops','Clothing']] },
+  ],
+
+  // ── Trip analysis ──────────────────────────────────────────
+  // WHERE the trip goes. Drives the destination rules.
+  // startDestination is deliberately excluded — it's where you're leaving from
+  // (usually home), and would otherwise fire destination rules on every trip.
+  _placeText(itin) {
+    const p = [itin.title, itin.endDestination];
+    (itin.hotels||[]).forEach(x => p.push(x.hotelName, x.hotelCity, x.hotelState, x.hotelAddress));
+    (itin.cruises||[]).forEach(c => {
+      p.push(c.departPort, c.arrivePort);
+      (c.stops||[]).forEach(s => p.push(s.port));
+      (c.activities||[]).forEach(a => p.push(a.port));
+    });
+    (itin.activities||[]).forEach(a => p.push(a.location));
+    (itin.trains||[]).forEach(t => p.push(t.departStation, t.arriveStation));
+    (itin.groundTransfers||[]).forEach(t => p.push(t.pickupLocation, t.dropOffLocation));
+    (itin.rentalCars||[]).forEach(c => p.push(c.pickupLocation, c.dropOffLocation));
+    return p.filter(Boolean).join(' | ').toLowerCase();
+  },
+
+  // WHAT you'll be doing. Drives the activity rules.
+  // Hotel names are excluded on purpose: "Marriott Resort, Spa & Golf" is a
+  // place to sleep, not a reason to pack golf clubs.
+  _actText(itin) {
+    const p = [itin.title];
+    (itin.activities||[]).forEach(a => p.push(a.activity));
+    (itin.cruises||[]).forEach(c => (c.activities||[]).forEach(a => p.push(a.activity)));
+    (itin.notes||[]).forEach(n => p.push(n.note));
+    return p.filter(Boolean).join(' | ').toLowerCase();
+  },
+  _nights(itin) {
+    if (!itin.startDate || !itin.endDate) return 0;
+    return Math.max(0, Math.round((new Date(itin.endDate) - new Date(itin.startDate)) / 86400000));
+  },
+  _month(itin) {
+    if (!itin.startDate) return 0;
+    return parseInt(String(itin.startDate).split('-')[1], 10) || 0;
+  },
+
+  // Best-guess category for a free-text item name.
+  guessCat(name) {
+    const s = String(name).toLowerCase();
+    if (/passport|visa|licen|boarding|ticket|insurance|itinerary|document|\bid\b/.test(s)) return 'Documents';
+    if (/cash|currency|money|wallet|credit card|travel card/.test(s))                      return 'Money';
+    if (/cpap|medic|\bmeds?\b|pill|prescription|\brx\b|vitamin|inhaler|insulin|allerg|first aid|bandage|epipen|glasses|contact lens/.test(s)) return 'Health';
+    if (/toothbrush|toothpaste|shampoo|conditioner|soap|razor|deodorant|floss|hairbrush|comb|lotion|sunscreen|makeup|moistur|nail/.test(s)) return 'Toiletries';
+    if (/charger|cable|phone|laptop|tablet|camera|headphone|earbud|adapter|battery|kindle|power strip/.test(s)) return 'Electronics';
+    if (/shirt|pant|dress|shoe|sock|underwear|jacket|coat|swim|hat|belt|sweater|short|outfit|pyjama|pajama|glove|scarf|boot|sandal/.test(s)) return 'Clothing';
+    if (/bag|backpack|umbrella|bottle|towel|book|snack|lock|pillow|binocular|headlamp/.test(s)) return 'Gear';
+    return 'Other';
+  },
+
+  _key: (s) => String(s||'').trim().toLowerCase(),
+  _has(list, item) {
+    const k = Packing._key(item);
+    return (list||[]).some(p => Packing._key(p.item) === k);
+  },
+
+  // Household list (Reference Data) + the trip traveller's personal list.
+  essentials(itin) {
+    const out = [];
+    const seen = new Set();
+    const push = (name, source) => {
+      const k = Packing._key(name);
+      if (!k || seen.has(k)) return;
+      seen.add(k);
+      out.push({ item: String(name).trim(), category: Packing.guessCat(name), source });
+    };
+    (State.data.reference.packingEssentials || []).forEach(x => push(x, 'household'));
+    const tv = (State.data.travellers || []).find(t => t.id === itin.travellerId);
+    (tv?.packingEssentials || []).forEach(x => push(x, 'personal'));
+    return out;
+  },
+
+  // Rules that fire for this trip, deduped by item name.
+  suggest(itin) {
+    const t   = Packing._placeText(itin);
+    const ctx = { act: Packing._actText(itin),
+                  nights: Packing._nights(itin), month: Packing._month(itin) };
+    const out = [], seen = new Set();
+    Packing.RULES.forEach(r => {
+      let hit = false;
+      try { hit = !!r.test(t, itin, ctx); } catch(e) { hit = false; }
+      if (!hit) return;
+      r.items.forEach(([item, category]) => {
+        const k = Packing._key(item);
+        if (seen.has(k)) return;
+        seen.add(k);
+        out.push({ item, category, reason: r.why, source: 'suggested' });
+      });
+    });
+    return out;
+  },
+
+  // Anything suggested/essential that isn't on the list yet.
+  missing(itin) {
+    const list = itin.packingList || [];
+    return [...Packing.essentials(itin), ...Packing.suggest(itin)]
+      .filter(x => !Packing._has(list, x.item));
+  },
+
+  _add(itin, entries) {
+    if (!itin.packingList) itin.packingList = [];
+    let n = 0;
+    entries.forEach(e => {
+      if (Packing._has(itin.packingList, e.item)) return;
+      itin.packingList.push({
+        id: Date.now() + Math.floor(Math.random() * 100000),
+        item: e.item, category: e.category || Packing.guessCat(e.item),
+        checked: false, source: e.source || 'manual', reason: e.reason || '',
+      });
+      n++;
+    });
+    return n;
+  },
+
+  // Repaint the progress bar without re-rendering the whole list.
+  refreshProgress(itin) {
+    const list = itin.packingList || [];
+    const done = list.filter(p => p.checked).length;
+    const pct  = list.length ? Math.round(done / list.length * 100) : 0;
+    const bar = $('#pack-bar-fill'), cnt = $('#pack-count'), pc = $('#pack-pct');
+    if (bar) bar.style.width = pct + '%';
+    if (cnt) cnt.textContent = `${done} of ${list.length} packed`;
+    if (pc)  pc.textContent  = pct + '%';
+  },
+};
+
+// ══════════════════════════════════════════════════════════════
+//  OUTFIT PLANNER
+// ══════════════════════════════════════════════════════════════
+const Outfits = {
+  SLOTS: ['Travel','Daytime','Evening','Formal','Beach','Active'],
+  CATS:  ['Tops','Bottoms','Dresses','Outerwear','Shoes','Accessories','Swim','Underlayers'],
+  CAT_ICON: { Tops:'👕', Bottoms:'👖', Dresses:'👗', Outerwear:'🧥',
+              Shoes:'👟', Accessories:'👜', Swim:'🩱', Underlayers:'🧦' },
+  LAUNDRY_EVERY: 7,   // days between assumed laundry when a trip runs long
+
+  guessCat(name) {
+    const s = String(name).toLowerCase();
+    if (/swim|bikini|trunks|rash guard|cover-?up/.test(s))                      return 'Swim';
+    if (/shoe|sneaker|boot|sandal|heel|flip flop|loafer|trainer/.test(s))       return 'Shoes';
+    if (/coat|jacket|sweater|cardigan|hoodie|blazer|fleece|shawl|pullover/.test(s)) return 'Outerwear';
+    if (/dress|gown|jumpsuit|romper/.test(s))                                   return 'Dresses';
+    if (/pant|jean|short|skirt|legging|trouser|chino|slack/.test(s))            return 'Bottoms';
+    if (/sock|underwear|bra|tights|thermal|base layer|pyjama|pajama/.test(s))   return 'Underlayers';
+    if (/bag|purse|belt|hat|scarf|glove|jewel|watch|sunglass|fanny|backpack|tie/.test(s)) return 'Accessories';
+    if (/shirt|tee|t-shirt|top|blouse|tank|polo|sweatshirt/.test(s))            return 'Tops';
+    return 'Tops';
+  },
+
+  // What's happening on a given date, used to decide how many outfits it needs.
+  dayInfo(itin, date) {
+    const travel = [], evening = [], daytime = [];
+    let formal = false, beach = false, active = false;
+
+    (itin.flights || []).forEach(f => (f.segments || []).forEach(s => {
+      if (s.departDate === date)
+        travel.push(`Fly ${s.departCity || ''}${s.arriveCity ? ' → ' + s.arriveCity : ''}`.trim());
+    }));
+    (itin.trains || []).forEach(t => {
+      if (t.departDate === date)
+        travel.push(`Train ${t.departStation || ''}${t.arriveStation ? ' → ' + t.arriveStation : ''}`.trim());
+    });
+    (itin.cruises || []).forEach(c => {
+      if (c.sailingDate === date) travel.push(`Embark ${c.shipName || 'cruise'}`);
+      if (c.arrivalDate === date) travel.push(`Debark ${c.shipName || 'cruise'}`);
+      (c.activities || []).forEach(a => {
+        if (a.date !== date) return;
+        const n = (a.activity || '').toLowerCase();
+        if (/gala|formal|black tie|captain/.test(n)) formal = true;
+        else if (/beach|snorkel|swim|dive/.test(n)) { beach = true; daytime.push(a.activity); }
+        else daytime.push(a.activity);
+      });
+    });
+
+    (itin.activities || []).forEach(a => {
+      if (a.date !== date) return;
+      const n = (a.activity || '').toLowerCase();
+      const isLate = a.time && a.time >= '17:00';
+      if (/gala|formal|black tie|wedding|reception/.test(n)) { formal = true; return; }
+      if (isLate || /dinner|show|concert|theater|theatre|opera|musical|cocktail|nightcap/.test(n)) {
+        evening.push(a.activity || 'Evening out'); return;
+      }
+      if (/beach|snorkel|swim|dive|pool/.test(n)) beach = true;
+      if (/hike|hiking|golf|bike|cycl|kayak|run|gym|ski/.test(n)) active = true;
+      daytime.push(a.activity);
+    });
+
+    return { travel, evening, daytime, formal, beach, active };
+  },
+
+  // The outfits a day *should* have. Two outfits when there's an evening
+  // event on top of the day's activity — the user's rule.
+  slotsFor(itin, date) {
+    const i = Outfits.dayInfo(itin, date);
+    const out = [];
+    if (i.travel.length)      out.push({ slot:'Travel',  label:i.travel[0] });
+    else if (i.beach)         out.push({ slot:'Beach',   label:i.daytime[0] || 'Beach day' });
+    else if (i.active)        out.push({ slot:'Active',  label:i.daytime[0] || 'Active day' });
+    else                      out.push({ slot:'Daytime', label:i.daytime[0] || '' });
+    if (i.evening.length)     out.push({ slot:'Evening', label:i.evening[0] });
+    if (i.formal)             out.push({ slot:'Formal',  label:'Formal night' });
+    return out;
+  },
+
+  days(itin) { return PrintCal._dateRange(itin.startDate, itin.endDate); },
+
+  nights(itin) {
+    const d = Outfits.days(itin);
+    return d.length ? d.length - 1 : 0;
+  },
+
+  // Dates where we assume you'll do laundry, so garments can repeat freely.
+  laundryDays(itin) {
+    const d = Outfits.days(itin);
+    if (d.length < Outfits.LAUNDRY_EVERY) return [];
+    const out = [];
+    for (let i = Outfits.LAUNDRY_EVERY - 1; i < d.length - 1; i += Outfits.LAUNDRY_EVERY) out.push(d[i]);
+    return out;
+  },
+
+  // Outfits already saved for a date, in slot order.
+  forDate(itin, date) {
+    return (itin.outfits || [])
+      .filter(o => o.date === date)
+      .sort((a, b) => Outfits.SLOTS.indexOf(a.slot) - Outfits.SLOTS.indexOf(b.slot));
+  },
+
+  // Adds any missing (date, slot) outfits. Never touches ones you've edited.
+  autoPlan(itin) {
+    if (!itin.outfits) itin.outfits = [];
+    let added = 0;
+    Outfits.days(itin).forEach(date => {
+      const have = new Set(Outfits.forDate(itin, date).map(o => o.slot));
+      Outfits.slotsFor(itin, date).forEach(s => {
+        if (have.has(s.slot)) return;
+        itin.outfits.push({
+          id: Date.now() + Math.floor(Math.random() * 100000),
+          date, slot: s.slot, label: s.label || '', items: [], photo: null, notes: '',
+        });
+        added++;
+      });
+    });
+    return added;
+  },
+
+  // How many outfits the auto-planner would add right now.
+  plannableCount(itin) {
+    let n = 0;
+    Outfits.days(itin).forEach(date => {
+      const have = new Set(Outfits.forDate(itin, date).map(o => o.slot));
+      Outfits.slotsFor(itin, date).forEach(s => { if (!have.has(s.slot)) n++; });
+    });
+    return n;
+  },
+
+  garment(itin, id) { return (itin.wardrobe || []).find(g => g.id === id); },
+
+  // Every garment with the dates it's worn — drives the reuse badges and
+  // the "what to pack" view.
+  wearMap(itin) {
+    const m = new Map();
+    (itin.outfits || []).forEach(o => (o.items || []).forEach(id => {
+      if (!m.has(id)) m.set(id, []);
+      if (!m.get(id).includes(o.date)) m.get(id).push(o.date);
+    }));
+    m.forEach(v => v.sort());
+    return m;
+  },
+
+  summary(itin) {
+    const wm = Outfits.wearMap(itin);
+    return (itin.wardrobe || []).map(g => ({
+      ...g, dates: wm.get(g.id) || [], wears: (wm.get(g.id) || []).length,
+    }));
+  },
+
+  // Flags a garment worn more times than one laundry cycle can support.
+  overWorn(itin, dates) {
+    const laundry = Outfits.laundryDays(itin);
+    if (!dates.length) return false;
+    if (!laundry.length) return dates.length > 2;          // short trip: 3+ wears is a lot
+    // Count wears inside the busiest single laundry cycle.
+    const bounds = [itin.startDate, ...laundry, '9999-12-31'];
+    let worst = 0;
+    for (let i = 0; i < bounds.length - 1; i++) {
+      const n = dates.filter(d => d > bounds[i] || (i === 0 && d >= bounds[0])).filter(d => d <= bounds[i + 1]).length;
+      worst = Math.max(worst, n);
+    }
+    return worst > 3;
   },
 };
 
@@ -2711,10 +3603,11 @@ const Edit = {
     t.airlinePref1= gv('#tv-air1')||null;
     t.airlinePref2= gv('#tv-air2')||null;
     t.tsaPrecheck = gv('#tv-tsa')||null;
+    t.packingEssentials = gv('#tv-packing').split('\n').map(s=>s.trim()).filter(Boolean);
   },
 
   add_traveller() {
-    const blank = {id:Date.now(),firstName:'',lastName:'',airportPref:null,seatPref:null,classPref:null,meal:null,airlinePref1:null,airlinePref2:null,tsaPrecheck:null};
+    const blank = {id:Date.now(),firstName:'',lastName:'',airportPref:null,seatPref:null,classPref:null,meal:null,airlinePref1:null,airlinePref2:null,tsaPrecheck:null,packingEssentials:[]};
     Modal.show('Add Traveller', Forms.traveller(blank), 'Add', () => {
       Edit._read_traveller(blank);
       if (!blank.firstName.trim() && !blank.lastName.trim()) { alert('First or last name is required.'); return; }
@@ -3350,6 +4243,290 @@ const Edit = {
       Modal.hide(); App.render(); App.saveData();
     });
   },
+
+  // ── Outfit planner ───────────────────────────────────────────
+  autoplan_outfits(itinId) {
+    const itin = find_itin(itinId);
+    const n = Outfits.autoPlan(itin);
+    if (!n) { alert('Every day already has its outfits planned.'); return; }
+    State.outfitView = 'days'; State.tripTab = 'outfits';
+    App.render(); App.saveData();
+  },
+
+  _garment_form(itin, g) {
+    const cats = Outfits.CATS.map(c =>
+      `<option value="${c}"${g.cat === c ? ' selected' : ''}>${Outfits.CAT_ICON[c]} ${c}</option>`).join('');
+    return `
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Garment <span style="color:var(--red)">*</span></label>
+          <input id="g-name" type="text" placeholder="e.g. Black yoga pants" value="${h(g.name || '')}" autocomplete="off">
+          <p class="hint" style="margin-top:6px">Add several at once by putting each on its own line.</p>
+        </div>
+        <div class="form-group full">
+          <label>Category</label>
+          <select id="g-cat"><option value="">— Auto-detect —</option>${cats}</select>
+        </div>
+      </div>`;
+  },
+
+  add_garment(itinId) {
+    const itin = find_itin(itinId);
+    Modal.show('Add Garment', Edit._garment_form(itin, {}), 'Add', () => {
+      const names = gv('#g-name').split('\n').map(s => s.trim()).filter(Boolean);
+      if (!names.length) { alert('Enter a garment name.'); return; }
+      if (!itin.wardrobe) itin.wardrobe = [];
+      const cat = gv('#g-cat');
+      let added = 0;
+      names.forEach(name => {
+        if (itin.wardrobe.some(x => x.name.trim().toLowerCase() === name.toLowerCase())) return;
+        itin.wardrobe.push({
+          id: Date.now() + Math.floor(Math.random() * 100000),
+          name, cat: cat || Outfits.guessCat(name), photo: null,
+        });
+        added++;
+      });
+      if (!added) { alert('Already in your wardrobe.'); return; }
+      Modal.hide(); App.render(); App.saveData();
+    });
+    setTimeout(() => $('#g-name')?.focus(), 50);
+  },
+
+  edit_garment(itinId, gid) {
+    const itin = find_itin(itinId);
+    const g = Outfits.garment(itin, gid);
+    if (!g) return;
+    Modal.show('Edit Garment', Edit._garment_form(itin, g), 'Save', () => {
+      const name = gv('#g-name').split('\n')[0].trim();
+      if (!name) { alert('Enter a garment name.'); return; }
+      g.name = name;
+      g.cat  = gv('#g-cat') || Outfits.guessCat(name);
+      Modal.hide(); App.render(); App.saveData();
+    });
+  },
+
+  delete_garment(itinId, gid) {
+    const itin = find_itin(itinId);
+    const g = Outfits.garment(itin, gid);
+    const worn = (Outfits.wearMap(itin).get(gid) || []).length;
+    if (!confirm(`Remove "${g?.name}"${worn ? ` from your wardrobe and from ${worn} outfit${worn>1?'s':''}` : ''}?`)) return;
+    itin.wardrobe = (itin.wardrobe || []).filter(x => x.id !== gid);
+    (itin.outfits || []).forEach(o => { o.items = (o.items || []).filter(id => id !== gid); });
+    App.render(); App.saveData();
+  },
+
+  async garment_photo(itinId, gid) {
+    const itin = find_itin(itinId);
+    const g = Outfits.garment(itin, gid);
+    if (!g) return;
+    const file = await Photos.pick();
+    if (!file) return;
+    const st = $('#save-status'); if (st) st.textContent = 'Uploading photo…';
+    try {
+      g.photo = await Photos.upload(itinId, file);
+      App.render(); App.saveData();
+    } catch (e) { alert('Photo upload failed: ' + e.message); }
+  },
+
+  async outfit_photo(itinId, oid) {
+    const itin = find_itin(itinId);
+    const o = (itin.outfits || []).find(x => x.id === oid);
+    if (!o) return;
+    const file = await Photos.pick();
+    if (!file) return;
+    const st = $('#save-status'); if (st) st.textContent = 'Uploading photo…';
+    try {
+      o.photo = await Photos.upload(itinId, file);
+      App.render(); App.saveData();
+    } catch (e) { alert('Photo upload failed: ' + e.message); }
+  },
+
+  _outfit_form(itin, o) {
+    const slots = Outfits.SLOTS.map(s =>
+      `<option value="${s}"${o.slot === s ? ' selected' : ''}>${s}</option>`).join('');
+    const chosen = new Set(o.items || []);
+    const wardrobe = itin.wardrobe || [];
+    const picker = !wardrobe.length
+      ? `<p style="font-size:13px;color:var(--muted)">Your wardrobe is empty — add garments in the box below and they'll be created and selected.</p>`
+      : Outfits.CATS.map(cat => {
+          const gs = wardrobe.filter(g => g.cat === cat);
+          if (!gs.length) return '';
+          return `<div class="of-pick-cat">${Outfits.CAT_ICON[cat]} ${cat}</div>` +
+            gs.map(g => `
+              <div class="of-pick${chosen.has(g.id) ? ' on' : ''}" data-gid="${g.id}"
+                   onclick="this.classList.toggle('on')">
+                <div class="bx">✓</div>
+                ${g.photo ? `<img data-photo="${h(g.photo)}" alt="">` : ''}
+                <span>${h(g.name)}</span>
+              </div>`).join('');
+        }).join('');
+    return `
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Occasion</label>
+          <select id="o-slot">${slots}</select>
+        </div>
+        <div class="form-group">
+          <label>Label</label>
+          <input id="o-label" type="text" placeholder="e.g. Travel day" value="${h(o.label || '')}">
+        </div>
+      </div>
+      <div style="margin-top:6px;border-top:1px solid var(--border);padding-top:12px">
+        <label style="font-size:13px;font-weight:600">Garments</label>
+        <div style="max-height:280px;overflow-y:auto;margin-top:8px">${picker}</div>
+      </div>
+      <div class="form-group full" style="margin-top:12px">
+        <label>Add new garments</label>
+        <textarea id="o-new" style="min-height:66px" placeholder="One per line, e.g.&#10;Black yoga pants&#10;White T-shirt&#10;Fanny pack"></textarea>
+      </div>
+      <div class="form-group full">
+        <label>Notes</label>
+        <input id="o-notes" type="text" value="${h(o.notes || '')}">
+      </div>`;
+  },
+
+  _read_outfit(itin, o) {
+    o.slot  = gv('#o-slot') || 'Daytime';
+    o.label = gv('#o-label');
+    o.notes = gv('#o-notes');
+    const picked = [...document.querySelectorAll('.of-pick.on')].map(el => Number(el.dataset.gid));
+    // Any names typed into the box become wardrobe garments and join this outfit.
+    gv('#o-new').split('\n').map(s => s.trim()).filter(Boolean).forEach(name => {
+      if (!itin.wardrobe) itin.wardrobe = [];
+      let g = itin.wardrobe.find(x => x.name.trim().toLowerCase() === name.toLowerCase());
+      if (!g) {
+        g = { id: Date.now() + Math.floor(Math.random() * 100000),
+              name, cat: Outfits.guessCat(name), photo: null };
+        itin.wardrobe.push(g);
+      }
+      if (!picked.includes(g.id)) picked.push(g.id);
+    });
+    o.items = picked;
+  },
+
+  add_outfit(itinId, date) {
+    const itin = find_itin(itinId);
+    const blank = { id: Date.now(), date, slot: 'Evening', label: '', items: [], photo: null, notes: '' };
+    Modal.show(`Add Outfit — ${fmt_date(date)}`, Edit._outfit_form(itin, blank), 'Add', () => {
+      Edit._read_outfit(itin, blank);
+      if (!itin.outfits) itin.outfits = [];
+      itin.outfits.push(blank);
+      Modal.hide(); App.render(); App.saveData();
+    });
+    setTimeout(Photos.hydrate, 60);
+  },
+
+  edit_outfit(itinId, oid) {
+    const itin = find_itin(itinId);
+    const o = (itin.outfits || []).find(x => x.id === oid);
+    if (!o) return;
+    Modal.show(`Outfit — ${fmt_date(o.date)}`, Edit._outfit_form(itin, o), 'Save', () => {
+      Edit._read_outfit(itin, o);
+      Modal.hide(); App.render(); App.saveData();
+    });
+    setTimeout(Photos.hydrate, 60);
+  },
+
+  delete_outfit(itinId, oid) {
+    const itin = find_itin(itinId);
+    if (!confirm('Remove this outfit?')) return;
+    itin.outfits = (itin.outfits || []).filter(o => o.id !== oid);
+    App.render(); App.saveData();
+  },
+
+  // Feeds the wardrobe into the Packing List so clothing lands in one checklist.
+  wardrobe_to_packing(itinId) {
+    const itin = find_itin(itinId);
+    const wm = Outfits.wearMap(itin);
+    const entries = (itin.wardrobe || []).map(g => {
+      const wears = (wm.get(g.id) || []).length;
+      return { item: g.name, category: 'Clothing', source: 'manual',
+               reason: wears ? `Worn ${wears}× on this trip` : '' };
+    });
+    if (!entries.length) { alert('Your wardrobe is empty.'); return; }
+    const n = Packing._add(itin, entries);
+    if (!n) { alert('All wardrobe garments are already on your packing list.'); return; }
+    alert(`Added ${n} garment${n>1?'s':''} to your packing list.`);
+    State.tripTab = 'packing'; App.render(); App.saveData();
+  },
+
+  // ── Packing list ─────────────────────────────────────────────
+  build_packing(itinId) {
+    const itin = find_itin(itinId);
+    const n = Packing._add(itin, [...Packing.essentials(itin), ...Packing.suggest(itin)]);
+    if (!n) { alert('Nothing to add yet. Add items to your Packing Essentials list first.'); return; }
+    State.tripTab = 'packing'; App.render(); App.saveData();
+  },
+
+  rescan_packing(itinId) {
+    const itin = find_itin(itinId);
+    const missing = Packing.missing(itin);
+    if (!missing.length) { alert('No new suggestions — your list already covers this trip.'); return; }
+    const preview = missing.slice(0, 12).map(m => '• ' + m.item).join('\n');
+    const more = missing.length > 12 ? `\n…and ${missing.length - 12} more` : '';
+    if (!confirm(`Add ${missing.length} new item${missing.length!==1?'s':''}?\n\n${preview}${more}`)) return;
+    Packing._add(itin, missing);
+    App.render(); App.saveData();
+  },
+
+  toggle_pack(itinId, id) {
+    const itin = find_itin(itinId);
+    const it = (itin.packingList || []).find(p => p.id === id);
+    if (!it) return;
+    it.checked = !it.checked;
+    // Update in place so the page doesn't jump on long lists.
+    const rowEl = document.getElementById('pack-' + id);
+    if (rowEl) rowEl.classList.toggle('checked', it.checked);
+    Packing.refreshProgress(itin);
+    App.saveSoon();
+  },
+
+  add_pack_item(itinId) {
+    const itin = find_itin(itinId);
+    const cats = Packing.CATS.map(c => `<option value="${c}">${Packing.ICON[c]} ${c}</option>`).join('');
+    Modal.show('Add Packing Item', `
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Item <span style="color:var(--red)">*</span></label>
+          <input id="pk-item" type="text" placeholder="e.g. Hiking poles" autocomplete="off">
+          <p class="hint" style="margin-top:6px">Add several at once by putting each on its own line.</p>
+        </div>
+        <div class="form-group full">
+          <label>Category</label>
+          <select id="pk-cat"><option value="">— Auto-detect —</option>${cats}</select>
+        </div>
+      </div>`, 'Add', () => {
+      const raw = gv('#pk-item').split('\n').map(s => s.trim()).filter(Boolean);
+      if (!raw.length) { alert('Enter an item name.'); return; }
+      const cat = gv('#pk-cat');
+      const added = Packing._add(itin, raw.map(item => ({
+        item, category: cat || Packing.guessCat(item), source: 'manual',
+      })));
+      if (!added) { alert('Already on your list.'); return; }
+      Modal.hide(); State.tripTab = 'packing'; App.render(); App.saveData();
+    });
+    setTimeout(() => $('#pk-item')?.focus(), 50);
+  },
+
+  delete_pack_item(itinId, id) {
+    const itin = find_itin(itinId);
+    itin.packingList = (itin.packingList || []).filter(p => p.id !== id);
+    App.render(); App.saveData();
+  },
+
+  uncheck_packing(itinId) {
+    const itin = find_itin(itinId);
+    (itin.packingList || []).forEach(p => { p.checked = false; });
+    App.render(); App.saveData();
+  },
+
+  clear_packing(itinId) {
+    const itin = find_itin(itinId);
+    const n = (itin.packingList || []).length;
+    if (!confirm(`Remove all ${n} item${n!==1?'s':''} from this packing list?`)) return;
+    itin.packingList = [];
+    App.render(); App.saveData();
+  },
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -3369,6 +4546,7 @@ const REF_CONFIGS = {
   meals:         { label:'Meal Preferences',      icon:'🍽', refKey:'meals',        valueKey:null,    simple:true,  newRec:()=>'' },
   priceTypes:    { label:'Price Types',           icon:'💰', refKey:'priceTypes',   valueKey:null,    simple:true,  newRec:()=>'' },
   usage:         { label:'Transfer Usage Types',  icon:'🔄', refKey:'usage',        valueKey:null,    simple:true,  newRec:()=>'' },
+  packingEssentials: { label:'Packing Essentials', icon:'🧳', refKey:'packingEssentials', valueKey:null, simple:true, newRec:()=>'' },
 };
 
 // ── Reference List View ──────────────────────────────────────
@@ -3403,7 +4581,16 @@ Views.ref_list = function(key) {
   if (cfg.simple) {
     return `
       <button class="btn btn-secondary btn-sm" onclick="State.view='ref_home';App.render()" style="margin-bottom:16px">← Reference Data</button>
-      <button class="btn-add-comp" onclick="RefEdit.add('${key}')">+ ${addLabel}</button>
+      ${key === 'packingEssentials' ? `
+        <p style="font-size:13.5px;color:var(--muted);margin-bottom:14px;line-height:1.5;max-width:640px">
+          Items everyone in the household always packs. These get added to every trip's packing list.
+          Person-specific items (CPAP, prescriptions) belong on the traveller instead — Travellers → Edit.
+        </p>` : ''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+        <button class="btn-add-comp" style="margin-bottom:0" onclick="RefEdit.add('${key}')">+ ${addLabel}</button>
+        ${key === 'packingEssentials' && !rawList.length ? `
+          <button class="btn-import-comp" onclick="RefEdit.load_packing_starters()">✨ Load starter items</button>` : ''}
+      </div>
       <div class="card" style="padding:0;overflow:hidden">
         <table class="trips-table">
           <thead><tr><th>Value</th><th style="width:120px">Actions</th></tr></thead>
@@ -3445,6 +4632,13 @@ Views.ref_list = function(key) {
 
 // ── Reference Edit CRUD ──────────────────────────────────────
 const RefEdit = {
+  load_packing_starters() {
+    const list = State.data.reference.packingEssentials || (State.data.reference.packingEssentials = []);
+    const have = new Set(list.map(x => String(x).trim().toLowerCase()));
+    Packing.STARTER.forEach(x => { if (!have.has(x.toLowerCase())) list.push(x); });
+    App.render(); App.saveData();
+  },
+
   _form(cfg, rec) {
     if (cfg.simple) {
       return `<div class="form-group">
@@ -3590,18 +4784,51 @@ const Print = {
         <input type="checkbox" id="opt-costs" style="width:16px;height:16px">
         <span><strong>Include cost summary</strong><br>
         <span style="font-size:12px;color:#64748b">Adds a breakdown of flights, hotels, cars, cruises, and activities with a grand total</span></span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px">
+        <input type="checkbox" id="opt-packing" style="width:16px;height:16px">
+        <span><strong>Include packing list</strong><br>
+        <span style="font-size:12px;color:#64748b">Adds a tick-box checklist grouped by category</span></span>
       </label>`;
     Modal.show('Print Options', body, '🖨️ Print', () => {
-      const includeCosts = document.getElementById('opt-costs')?.checked || false;
+      const includeCosts   = document.getElementById('opt-costs')?.checked || false;
+      const includePacking = document.getElementById('opt-packing')?.checked || false;
       Modal.hide();
-      Print.show(id, includeCosts);
+      Print.show(id, includeCosts, includePacking);
     });
   },
 
-  show(id, includeCosts = false) {
+  _packing(itin) {
+    const list = itin.packingList || [];
+    if (!list.length) return '';
+    const groups = Packing.CATS
+      .map(c => [c, list.filter(p => (p.category||'Other') === c)])
+      .filter(([, items]) => items.length);
+    const known = new Set(Packing.CATS);
+    const orphans = list.filter(p => !known.has(p.category||'Other'));
+    if (orphans.length) groups.push(['Other', orphans]);
+
+    return `
+      <div style="margin-bottom:24px;page-break-inside:avoid">
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748b;border-bottom:2px solid #1e3a5f;padding-bottom:6px;margin-bottom:12px">🧳 Packing List</div>
+        <div style="column-count:2;column-gap:28px">
+          ${groups.map(([cat, items]) => `
+            <div style="break-inside:avoid;margin-bottom:14px">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">${cat}</div>
+              ${items.map(p => `
+                <div style="font-size:12px;padding:2px 0;display:flex;gap:7px;align-items:flex-start">
+                  <span style="display:inline-block;width:11px;height:11px;border:1.5px solid #94a3b8;border-radius:3px;flex-shrink:0;margin-top:2px;text-align:center;line-height:9px;font-size:9px">${p.checked?'✓':''}</span>
+                  <span${p.checked?' style="color:#94a3b8"':''}>${h(p.item)}</span>
+                </div>`).join('')}
+            </div>`).join('')}
+        </div>
+      </div>`;
+  },
+
+  show(id, includeCosts = false, includePacking = false) {
     const itin = find_itin(id);
     const win = window.open('', '_blank');
-    win.document.write(Print._html(itin, includeCosts));
+    win.document.write(Print._html(itin, includeCosts, includePacking));
     win.document.close();
     win.focus();
     setTimeout(() => win.print(), 400);
@@ -3761,7 +4988,7 @@ const Print = {
       </div>`;
   },
 
-  _html(itin, includeCosts = false) {
+  _html(itin, includeCosts = false, includePacking = false) {
     const dur = itin.startDate && itin.endDate
       ? `${fmt_date(itin.startDate)} – ${fmt_date(itin.endDate)}`
       : fmt_date(itin.startDate);
@@ -3916,7 +5143,7 @@ const Print = {
           📅 ${dur}${dest?' &nbsp;·&nbsp; 📍 '+h(dest):''}
         </div>
       </div>
-      <div class="body">${sections.join('')}${includeCosts ? Print._costs(itin) : ''}</div>
+      <div class="body">${sections.join('')}${includeCosts ? Print._costs(itin) : ''}${includePacking ? Print._packing(itin) : ''}</div>
     </body></html>`;
   },
 
