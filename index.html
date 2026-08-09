@@ -1118,6 +1118,9 @@ let State = {
 const Router = {
   go(view, params = {}) {
     State.view = view;
+    // Opening a different trip starts on its day plan, not whatever outfit
+    // sub-view the last trip was left on.
+    if (params.id !== undefined && params.id !== State.tripId) State.outfitView = 'days';
     if (params.id  !== undefined) State.tripId = params.id;
     if (params.tab !== undefined) State.tripTab = params.tab;
     if (params.refKey) { State.refKey = params.refKey; }
@@ -1862,7 +1865,8 @@ const Views = {
       const sum = Outfits.summary(itin).sort((a, b) =>
         Outfits.CATS.indexOf(a.cat) - Outfits.CATS.indexOf(b.cat) || a.name.localeCompare(b.name));
       const unworn    = sum.filter(g => !g.wears).length;
-      const available = closet.length - sum.length;
+      const packedIds = new Set(Outfits.tripIds(itin));
+      const available = closet.filter(g => !packedIds.has(g.id)).length;
       return `
         <button class="btn btn-secondary btn-sm" style="margin-bottom:16px"
           onclick="State.outfitView='days';App.render_content()">← Back to Days</button>
@@ -1889,7 +1893,7 @@ const Views = {
                 <div class="of-wardrobe-grid">
                   ${gs.map(g => `
                     <div class="of-w-card">
-                      <div class="of-w-photo" onclick="${g.photo ? `Photos.lightbox('${h(g.photo)}')` : `Edit.garment_photo(${itin.id},${g.id})`}">
+                      <div class="of-w-photo" onclick="${g.photo ? `Photos.lightbox('${h(g.photo)}')` : `Edit.garment_photo(${g.id})`}">
                         ${g.photo ? `<img data-photo="${h(g.photo)}" alt="${h(g.name)}">` : '📷'}
                       </div>
                       <div class="of-w-meta">
@@ -1925,7 +1929,10 @@ const Views = {
             <div class="pv"><b>${toPlan}</b>outfit${toPlan!==1?'s':''}</div>
           </div>
           ${preview ? `<div style="font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.8">${preview}${days.length>3?'<br>…':''}</div>` : ''}
-          <button class="btn btn-primary" onclick="Edit.autoplan_outfits(${itin.id})">🪄 Plan my ${days.length} days</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+            <button class="btn btn-primary" onclick="Edit.autoplan_outfits(${itin.id})">🪄 Plan my ${days.length} days</button>
+            <button class="btn btn-secondary" onclick="State.outfitView='wardrobe';App.render_content()">👕 Packed for this trip (${wardrobe.length})</button>
+          </div>
         </div>`;
     }
 
@@ -3348,11 +3355,11 @@ const Photos = {
     }
   },
 
-  async upload(itinId, file) {
+  async upload(itinId, file, folder = 'outfits') {
     const small = await Photos.downscale(file);
     const stamp = Date.now();
     const safe  = (file.name || 'photo.jpg').replace(/[^\w.\-]/g, '_');
-    const meta  = await DB.uploadFile(`/outfits/${itinId}/${stamp}-${safe}`, small);
+    const meta  = await DB.uploadFile(`/${folder}/${itinId}/${stamp}-${safe}`, small);
     return meta.path_lower || meta.path_display;
   },
 
@@ -3786,11 +3793,12 @@ const Outfits = {
     if (!itin.wardrobe.includes(id)) itin.wardrobe.push(id);
   },
 
-  // Closet garments this trip can pick from. Owners are optional — until at
-  // least one garment has one, every trip sees the whole closet.
+  // Closet garments this trip can pick from. Owners are optional and only ever
+  // narrow the list — a trip with no traveller, or a closet where nobody has
+  // claimed anything, sees everything.
   forTrip(itin) {
     const closet = Outfits.closet();
-    if (!closet.some(g => g.owner)) return closet;
+    if (!itin.travellerId || !closet.some(g => g.owner)) return closet;
     return closet.filter(g => !g.owner || g.owner === itin.travellerId);
   },
 
@@ -3900,10 +3908,6 @@ const DnD = {
   EDGE: 100,    // px from the window edge where the list starts scrolling itself
 
   st: null,     // the pending or active drag
-  endedAt: 0,
-
-  // True just after a drag, so the click it turns into gets swallowed.
-  recent() { return Date.now() - DnD.endedAt < 400; },
 
   init() {
     document.addEventListener('pointerdown', DnD.down, true);
@@ -3914,17 +3918,14 @@ const DnD = {
     // long-press turning into a text selection or share sheet.
     document.addEventListener('touchmove', e => { if (DnD.st?.dragging) e.preventDefault(); }, { passive: false });
     document.addEventListener('contextmenu', e => { if (DnD.st?.dragging) e.preventDefault(); });
-    document.addEventListener('click', e => {
-      if (!DnD.recent()) return;
-      e.stopPropagation(); e.preventDefault();
-    }, true);
   },
 
   down(e) {
     if (DnD.st || e.button > 0) return;
     const src = e.target.closest?.('[data-drag]');
     if (!src) return;
-    if (e.target.closest('button, a, input, select, textarea')) return;
+    // Photos and buttons keep their taps — drag a card by its body or grip.
+    if (e.target.closest('button, a, input, select, textarea, .of-thumb, .of-w-photo')) return;
     DnD.st = {
       src, kind: src.dataset.drag,
       id: Number(src.dataset.gid || src.dataset.oid),
@@ -3979,13 +3980,27 @@ const DnD = {
     if (!st?.dragging) return;
     st.ghost.style.transform = `translate(${st.x - st.dx}px,${st.y - st.dy}px)`;
     const under = document.elementFromPoint(st.x, st.y);
-    const target = DnD.target(under?.closest?.('[data-drop]'));
+    const target = DnD.target(under?.closest?.('[data-drop]') || DnD.near_day());
     if (target !== st.over) {
       st.over?.classList.remove('dnd-over');
       target?.classList.add('dnd-over');
       st.over = target;
     }
     st.ghost.querySelector('.dnd-hint').textContent = DnD.hint(target);
+  },
+
+  // Letting go in the gap between two days shouldn't quietly do nothing, so a
+  // near miss counts as a drop on the closest day.
+  near_day() {
+    const st = DnD.st;
+    let best = null, bestGap = 70;
+    document.querySelectorAll('.of-day[data-drop="day"]').forEach(el => {
+      const r = el.getBoundingClientRect();
+      if (st.x < r.left - 40 || st.x > r.right + 40) return;
+      const gap = st.y < r.top ? r.top - st.y : (st.y > r.bottom ? st.y - r.bottom : 0);
+      if (gap < bestGap) { bestGap = gap; best = el; }
+    });
+    return best;
   },
 
   // An outfit can only land on a day; a garment on a day or on one outfit.
@@ -4018,11 +4033,11 @@ const DnD = {
     st.raf = requestAnimationFrame(DnD.autoscroll);
   },
 
-  up() {
+  up(e) {
     const st = DnD.st;
     if (!st) return;
-    const target = st.dragging ? st.over : null;
     const dragged = st.dragging;
+    const target = dragged && e.type === 'pointerup' ? st.over : null;
     DnD.reset();
     if (dragged) DnD.commit(st, target);
   },
@@ -4037,7 +4052,20 @@ const DnD = {
     st.src.classList.remove('dnd-src');
     st.over?.classList.remove('dnd-over');
     document.body.classList.remove('dnd-on');
-    if (st.dragging) DnD.endedAt = Date.now();
+    if (st.dragging) DnD.eat_click(st.x, st.y);
+  },
+
+  // Releasing a drag fires a click on whatever it started from, which would
+  // open the very dialog the drag just replaced. Swallow that one click — but
+  // only the one landing where the drag ended, so a deliberate tap somewhere
+  // else right afterwards still counts.
+  eat_click(x, y) {
+    const swallow = e => {
+      if (Math.hypot(e.clientX - x, e.clientY - y) > 14) return;
+      e.stopPropagation(); e.preventDefault();
+    };
+    document.addEventListener('click', swallow, true);
+    setTimeout(() => document.removeEventListener('click', swallow, true), 400);
   },
 
   commit(st, target) {
@@ -4065,7 +4093,8 @@ const DnD = {
         msg = `${g.name} → ${r.outfit.slot} on ${fmt_date_short(date)}${r.created ? ' (new outfit)' : ''}`;
       }
     }
-    App.render(); App.saveData();
+    App.render();
+    App.saveSoon();   // dragging comes in bursts; one upload for the lot
     App.toast(msg);
   },
 };
@@ -4766,7 +4795,9 @@ const Edit = {
     App.render_content();
   },
 
-  _garment_form(g) {
+  // `multi` swaps the name box for a textarea, so a whole armful of garments can
+  // be typed one per line — a plain input silently swallows the line breaks.
+  _garment_form(g, multi = false) {
     const cats = Outfits.CATS.map(c =>
       `<option value="${c}"${g.cat === c ? ' selected' : ''}>${Outfits.CAT_ICON[c]} ${c}</option>`).join('');
     const people = (State.data.travellers || []).slice()
@@ -4775,10 +4806,13 @@ const Edit = {
     return `
       <div class="form-grid">
         <div class="form-group full">
-          <label>Garment <span style="color:var(--red)">*</span></label>
-          <input id="g-name" type="text" placeholder="e.g. Black yoga pants" value="${h(g.name || '')}" autocomplete="off">
-          <p class="hint" style="margin-top:6px">Add several at once by putting each on its own line. Garments go
-            into your closet, so every trip can pick them.</p>
+          <label>Garment${multi ? 's' : ''} <span style="color:var(--red)">*</span></label>
+          ${multi
+            ? `<textarea id="g-name" style="min-height:72px" placeholder="One per line, e.g.&#10;Black yoga pants&#10;White T-shirt"></textarea>`
+            : `<input id="g-name" type="text" placeholder="e.g. Black yoga pants" value="${h(g.name || '')}" autocomplete="off">`}
+          <p class="hint" style="margin-top:6px">${multi
+            ? 'One garment per line. They go into your closet, so every trip can pick them.'
+            : 'Renaming it here renames it on every trip that uses it.'}</p>
         </div>
         <div class="form-group">
           <label>Category</label>
@@ -4796,7 +4830,7 @@ const Edit = {
   // gets packed for that trip too.
   add_garment(itinId) {
     const itin = itinId ? find_itin(itinId) : null;
-    Modal.show('Add Garment', Edit._garment_form({}), 'Add', () => {
+    Modal.show('Add Garment', Edit._garment_form({}, true), 'Add', () => {
       const names = gv('#g-name').split('\n').map(s => s.trim()).filter(Boolean);
       if (!names.length) { alert('Enter a garment name.'); return; }
       const cat   = gv('#g-cat');
@@ -4913,7 +4947,6 @@ const Edit = {
 
   // Tap-instead-of-drag route from the closet drawer onto a day.
   place_garment(itinId, gid) {
-    if (DnD.recent()) return;
     const itin = find_itin(itinId);
     const g = Outfits.garment(itin, gid);
     if (!g) return;
@@ -4975,14 +5008,16 @@ const Edit = {
     });
   },
 
-  async garment_photo(itinId, gid) {
+  // Garment photos belong to the closet now, not to whichever trip you were
+  // looking at when you took them.
+  async garment_photo(gid) {
     const g = Outfits.garment(null, gid);
     if (!g) return;
     const file = await Photos.pick();
     if (!file) return;
     const st = $('#save-status'); if (st) st.textContent = 'Uploading photo…';
     try {
-      g.photo = await Photos.upload(itinId || 'closet', file);
+      g.photo = await Photos.upload(gid, file, 'wardrobe');
       App.render(); App.saveData();
     } catch (e) { alert('Photo upload failed: ' + e.message); }
   },
@@ -5249,7 +5284,7 @@ Views.ref_wardrobe = function() {
               const trips = Outfits.tripsUsing(g.id).length;
               return `
                 <div class="of-w-card" data-name="${h(String(g.name).toLowerCase())}">
-                  <div class="of-w-photo" onclick="${g.photo ? `Photos.lightbox('${h(g.photo)}')` : `Edit.garment_photo(null,${g.id})`}">
+                  <div class="of-w-photo" onclick="${g.photo ? `Photos.lightbox('${h(g.photo)}')` : `Edit.garment_photo(${g.id})`}">
                     ${g.photo ? `<img data-photo="${h(g.photo)}" alt="${h(g.name)}">` : '📷'}
                   </div>
                   <div class="of-w-meta">
