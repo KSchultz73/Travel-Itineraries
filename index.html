@@ -489,11 +489,86 @@
     }
     .of-pick.on .bx { background:var(--blue); border-color:var(--blue); color:white; }
     .of-pick img { width:30px; height:30px; object-fit:cover; border-radius:5px; flex-shrink:0; }
+    .of-pick .ci { font-size:17px; width:30px; text-align:center; flex-shrink:0; }
     .of-lightbox {
       position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:500;
       display:flex; align-items:center; justify-content:center; padding:20px; cursor:zoom-out;
     }
     .of-lightbox img { max-width:100%; max-height:100%; border-radius:8px; }
+
+    /* Closet drawer — the drag source for garments */
+    .of-tray { margin-bottom:14px; }
+    .of-tray-head {
+      display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+      background:var(--card); border:1px solid var(--border); border-radius:10px;
+      padding:10px 14px; font-size:13.5px; font-weight:700; cursor:pointer; box-shadow:var(--shadow);
+    }
+    .of-tray.open .of-tray-head { border-radius:10px 10px 0 0; border-bottom:none; }
+    .of-tray-head .n {
+      background:var(--bg); border:1px solid var(--border); border-radius:20px;
+      padding:1px 8px; font-size:11.5px; font-weight:700; color:var(--muted); margin-left:4px;
+    }
+    .of-tray-head .hint { font-weight:500; font-size:12px; color:var(--muted); flex:1; }
+    .of-tray-head .caret { color:var(--muted); font-size:12px; }
+    .of-tray-body {
+      background:var(--card); border:1px solid var(--border); border-top:none;
+      border-radius:0 0 10px 10px; padding:12px 14px 14px; box-shadow:var(--shadow);
+    }
+    .of-tray-q { width:100%; max-width:280px; margin-bottom:10px; }
+    .of-tray-empty { font-size:13px; color:var(--muted); margin:2px 0; line-height:1.5; }
+    .of-chips { display:flex; flex-wrap:wrap; gap:7px; max-height:186px; overflow-y:auto; }
+    .of-chip {
+      display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600;
+      background:var(--bg); border:1px solid var(--border); border-radius:20px;
+      padding:4px 11px 4px 6px; cursor:grab; touch-action:manipulation;
+      -webkit-user-select:none; user-select:none;
+    }
+    .of-chip i { font-style:normal; font-size:14px; }
+    .of-chip img { width:22px; height:22px; border-radius:50%; object-fit:cover; }
+    .of-chip.packed { background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8; }
+    .of-chip:hover { border-color:#94a3b8; }
+
+    .of-tip {
+      display:flex; align-items:flex-start; gap:12px; background:#f5f3ff;
+      border:1px solid #ddd6fe; color:#5b21b6; border-radius:10px;
+      padding:11px 14px; font-size:12.5px; line-height:1.55; margin-bottom:16px;
+    }
+    .of-tip button {
+      flex-shrink:0; background:white; border:1px solid #ddd6fe; color:#5b21b6;
+      border-radius:6px; padding:3px 10px; font-size:12px; font-weight:700; cursor:pointer;
+    }
+    .of-top { display:flex; align-items:center; gap:8px; }
+    .of-grip { margin-left:auto; color:#cbd5e1; font-size:15px; cursor:grab; letter-spacing:-2px; }
+
+    /* Drag & drop */
+    .of-card[data-drag] { cursor:grab; }
+    body.dnd-on { -webkit-user-select:none; user-select:none; cursor:grabbing; }
+    body.dnd-on .of-card, body.dnd-on .of-chip, body.dnd-on .of-grip { cursor:grabbing; }
+    .dnd-src { opacity:.4; }
+    .dnd-ghost {
+      position:fixed; top:0; left:0; z-index:600; pointer-events:none;
+      margin:0 !important; box-shadow:0 12px 28px rgba(15,23,42,.28);
+      transform-origin:top left; opacity:.96; rotate:-1.5deg;
+    }
+    .dnd-hint {
+      position:absolute; left:0; bottom:-11px; white-space:nowrap;
+      background:var(--navy); color:white; font-size:11px; font-weight:700;
+      padding:3px 9px; border-radius:20px; box-shadow:var(--shadow);
+    }
+    .of-day.dnd-over {
+      background:#eff6ff; box-shadow:0 0 0 2px var(--blue) inset;
+      border-radius:10px; padding:8px; margin:-8px -8px 12px;
+    }
+    .of-card.dnd-over { border-color:var(--blue); background:#eff6ff; box-shadow:0 0 0 2px #bfdbfe; }
+
+    #toast {
+      position:fixed; left:50%; bottom:26px; transform:translate(-50%,20px);
+      background:var(--navy); color:white; font-size:13px; font-weight:600;
+      padding:10px 18px; border-radius:24px; box-shadow:0 8px 24px rgba(15,23,42,.3);
+      z-index:700; opacity:0; pointer-events:none; transition:opacity .18s, transform .18s;
+      max-width:calc(100vw - 32px); text-align:center;
+    }
+    #toast.on { opacity:1; transform:translate(-50%,0); }
 
     /* Packing list */
     .pack-progress-wrap { background: var(--card); border:1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 16px; box-shadow: var(--shadow); }
@@ -1030,6 +1105,8 @@ let State = {
   tripTab: 'flights',
   refKey: null,
   outfitView: 'days',
+  closetTray: false,
+  closetQ: '',
   searchQ: '',
   searchYear: '',
   dirty: false,
@@ -1773,7 +1850,8 @@ const Views = {
 
     const days     = Outfits.days(itin);
     const outfits  = itin.outfits || [];
-    const wardrobe = itin.wardrobe || [];
+    const wardrobe = Outfits.tripWardrobe(itin);
+    const closet   = Outfits.forTrip(itin);
     const wm       = Outfits.wearMap(itin);
     const laundry  = new Set(Outfits.laundryDays(itin));
     const toPlan   = Outfits.plannableCount(itin);
@@ -1783,15 +1861,23 @@ const Views = {
     if (State.outfitView === 'wardrobe') {
       const sum = Outfits.summary(itin).sort((a, b) =>
         Outfits.CATS.indexOf(a.cat) - Outfits.CATS.indexOf(b.cat) || a.name.localeCompare(b.name));
-      const unworn = sum.filter(g => !g.wears).length;
+      const unworn    = sum.filter(g => !g.wears).length;
+      const available = closet.length - sum.length;
       return `
         <button class="btn btn-secondary btn-sm" style="margin-bottom:16px"
           onclick="State.outfitView='days';App.render_content()">← Back to Days</button>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-          <button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_garment(${itin.id})">+ Add Garment</button>
-          ${wardrobe.length ? `<button class="btn btn-secondary btn-sm" onclick="Edit.wardrobe_to_packing(${itin.id})">→ Add to Packing List</button>` : ''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_garment(${itin.id})">+ New Garment</button>
+          ${available > 0 ? `<button class="btn-import-comp" onclick="Edit.add_from_closet(${itin.id})">👗 Add from Closet (${available})</button>` : ''}
+          ${sum.length ? `<button class="btn btn-secondary btn-sm" onclick="Edit.wardrobe_to_packing(${itin.id})">→ Add to Packing List</button>` : ''}
+          <button class="btn btn-secondary btn-sm" onclick="Router.goRef('wardrobe')">🚪 Manage Closet</button>
         </div>
-        ${!sum.length ? `<div class="empty-state"><div class="icon">👕</div><p>No garments yet. Add them here, or straight from a day's outfit.</p></div>` : `
+        <p style="font-size:12.5px;color:var(--muted);margin-bottom:16px;line-height:1.5;max-width:640px">
+          These are the garments packed for this trip, picked from your closet — one shared list of clothes
+          you can pull from on any trip. Removing one here only takes it off this trip.
+        </p>
+        ${!sum.length ? `<div class="empty-state"><div class="icon">👕</div>
+          <p>Nothing packed for this trip yet.<br><small style="font-size:13px">Add a garment, pull some out of your closet, or pick them straight from a day's outfit.</small></p></div>` : `
           ${unworn ? `<div class="of-laundry" style="background:#fffbeb;border-color:#fde68a;color:#92400e">
             ${unworn} garment${unworn>1?"s aren't":" isn't"} used in any outfit yet.</div>` : ''}
           ${Outfits.CATS.map(cat => {
@@ -1812,7 +1898,7 @@ const Views = {
                           Outfits.overWorn(itin, g.dates) ? ' · <span style="color:#b45309;font-weight:700">needs laundry</span>' : ''}</div>
                         <div style="display:flex;gap:4px;margin-top:7px">
                           <button class="btn-edit" style="flex:1" onclick="Edit.edit_garment(${itin.id},${g.id})">Edit</button>
-                          <button class="btn-del" onclick="Edit.delete_garment(${itin.id},${g.id})">×</button>
+                          <button class="btn-del" title="Remove from this trip" onclick="Edit.remove_garment(${itin.id},${g.id})">×</button>
                         </div>
                       </div>
                     </div>`).join('')}
@@ -1860,17 +1946,19 @@ const Views = {
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
         ${toPlan ? `<button class="btn-import-comp" onclick="Edit.autoplan_outfits(${itin.id})">🪄 Plan my days (${toPlan})</button>` : ''}
-        <button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_garment(${itin.id})">+ Add Garment</button>
-        <button class="btn btn-secondary btn-sm" onclick="State.outfitView='wardrobe';App.render_content()">👕 Wardrobe (${wardrobe.length})</button>
+        <button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_garment(${itin.id})">+ New Garment</button>
+        <button class="btn btn-secondary btn-sm" onclick="State.outfitView='wardrobe';App.render_content()">👕 Packed for this trip (${wardrobe.length})</button>
         ${wardrobe.length ? `<button class="btn btn-secondary btn-sm" onclick="Edit.wardrobe_to_packing(${itin.id})">→ Add to Packing List</button>` : ''}
       </div>
+      ${Views._closet_tray(itin, closet)}
+      ${Views._dnd_tip()}
       ${laundryNote}
       ${days.map((date, i) => {
         const dayOutfits = Outfits.forDate(itin, date);
         const info = Outfits.dayInfo(itin, date);
         const ctx = [...info.travel, ...info.daytime, ...info.evening].slice(0, 2).join(' · ');
         return `
-          <div class="of-day">
+          <div class="of-day" data-drop="day" data-date="${date}" data-itin="${itin.id}">
             <div class="of-day-head">
               <span class="num">DAY ${i + 1}</span>
               <span class="date">${fmt_date(date)}</span>
@@ -1880,17 +1968,22 @@ const Views = {
             ${dayOutfits.map(o => {
               const gs = (o.items || []).map(id => Outfits.garment(itin, id)).filter(Boolean);
               return `
-                <div class="of-card">
+                <div class="of-card" data-drag="outfit" data-drop="outfit"
+                     data-oid="${o.id}" data-date="${date}" data-itin="${itin.id}">
                   <div class="of-thumb" onclick="${o.photo ? `Photos.lightbox('${h(o.photo)}')` : `Edit.outfit_photo(${itin.id},${o.id})`}">
                     ${o.photo ? `<img data-photo="${h(o.photo)}" alt="outfit">` : '<div class="cam">📷<br>Add photo</div>'}
                   </div>
                   <div class="of-body">
-                    <span class="of-slot of-slot-${o.slot}">${o.slot}</span>
+                    <div class="of-top">
+                      <span class="of-slot of-slot-${o.slot}">${o.slot}</span>
+                      <span class="of-grip" title="Drag onto another day to move this outfit">⠿</span>
+                    </div>
                     ${o.label ? `<div class="of-label">${h(o.label)}</div>` : ''}
                     <div class="of-garments">
                       ${gs.length ? gs.map(g => {
                         const wears = (wm.get(g.id) || []).length;
-                        return `<span class="of-g ${wears > 1 ? 'reused' : ''}">${Outfits.CAT_ICON[g.cat] || '👕'} ${h(g.name)}${
+                        return `<span class="of-g ${wears > 1 ? 'reused' : ''}" data-drag="garment" data-gid="${g.id}"
+                                      title="Drag onto another day or outfit">${Outfits.CAT_ICON[g.cat] || '👕'} ${h(g.name)}${
                           wears > 1 ? `<span class="n">${wears}×</span>` : ''}</span>`;
                       }).join('') : '<span class="of-empty-g">No garments picked yet</span>'}
                     </div>
@@ -1899,6 +1992,7 @@ const Views = {
                   <div class="of-acts">
                     <button class="btn-edit" onclick="Edit.edit_outfit(${itin.id},${o.id})">Edit</button>
                     <button class="btn-edit" onclick="Edit.outfit_photo(${itin.id},${o.id})">📷</button>
+                    <button class="btn-edit" title="Move or copy to another day" onclick="Edit.move_outfit(${itin.id},${o.id})">⇄</button>
                     <button class="btn-del" onclick="Edit.delete_outfit(${itin.id},${o.id})">×</button>
                   </div>
                 </div>`;
@@ -1907,6 +2001,61 @@ const Views = {
               onclick="Edit.add_outfit(${itin.id},'${date}')">+ Another outfit for this day</button>
           </div>`;
       }).join('')}`;
+  },
+
+  // Drag-and-drop source for garments: a drawer of the whole closet that stays
+  // pinned above the days while you work.
+  _closet_tray(itin, closet) {
+    const open = State.closetTray;
+    const q    = State.closetQ || '';
+    if (!open) {
+      return `<div class="of-tray">
+        <button class="of-tray-head" onclick="Edit.toggle_closet_tray()">
+          <span class="ttl">👕 Closet <span class="n">${closet.length}</span></span>
+          <span class="hint">open to drag garments onto a day</span>
+          <span class="caret">▸</span>
+        </button>
+      </div>`;
+    }
+    const needle = q.trim().toLowerCase();
+    const inTrip = new Set(Outfits.tripIds(itin));
+    const sorted = closet
+      .filter(g => !needle || String(g.name).toLowerCase().includes(needle))
+      .sort((a, b) =>
+      Outfits.CATS.indexOf(a.cat) - Outfits.CATS.indexOf(b.cat) ||
+      String(a.name).localeCompare(String(b.name)));
+    return `<div class="of-tray open">
+      <button class="of-tray-head" onclick="Edit.toggle_closet_tray()">
+        <span class="ttl">👕 Closet <span class="n">${closet.length}</span></span>
+        <span class="hint">drag a garment onto a day, or tap it to place</span>
+        <span class="caret">▾</span>
+      </button>
+      <div class="of-tray-body">
+        ${closet.length > 8 ? `<input class="of-tray-q" type="text" placeholder="Filter garments…"
+          value="${h(q)}" oninput="Outfits.filter_tray(this.value)">` : ''}
+        ${!closet.length ? `<p class="of-tray-empty">Your closet is empty. Add a garment and it will be
+          here for every trip from now on.</p>` : `
+          <div class="of-chips">
+            ${sorted.map(g => `
+              <span class="of-chip${inTrip.has(g.id) ? ' packed' : ''}" data-drag="garment" data-gid="${g.id}"
+                    data-name="${h(String(g.name).toLowerCase())}"
+                    onclick="Edit.place_garment(${itin.id},${g.id})">
+                ${g.photo ? `<img data-photo="${h(g.photo)}" alt="">` : `<i>${Outfits.CAT_ICON[g.cat] || '👕'}</i>`}
+                ${h(g.name)}
+              </span>`).join('')}
+          </div>`}
+      </div>
+    </div>`;
+  },
+
+  _dnd_tip() {
+    if (localStorage.getItem('tip_outfit_dnd') === 'done') return '';
+    return `<div class="of-tip">
+      <span>💡 <strong>Drag to rearrange.</strong> Pull an outfit onto another day to move it there,
+      or drag a garment out of the closet onto a day. On a phone, press and hold first.
+      The ⇄ button does the same thing without dragging.</span>
+      <button onclick="Edit.dismiss_dnd_tip()">Got it</button>
+    </div>`;
   },
 
   _packing(itin) {
@@ -2180,13 +2329,57 @@ const App = {
     if (!d) return;
     d.reference = d.reference || {};
     if (!Array.isArray(d.reference.packingEssentials)) d.reference.packingEssentials = [];
+    if (!Array.isArray(d.reference.wardrobe))          d.reference.wardrobe          = [];
     (d.travellers || []).forEach(t => {
       if (!Array.isArray(t.packingEssentials)) t.packingEssentials = [];
     });
     (d.itineraries || []).forEach(i => {
       if (!Array.isArray(i.packingList)) i.packingList = [];
-      if (!Array.isArray(i.wardrobe))    i.wardrobe    = [];
       if (!Array.isArray(i.outfits))     i.outfits     = [];
+    });
+    App.migrate_wardrobe();
+  },
+
+  // Garments used to live on the trip, so the same shirt had to be retyped for
+  // every trip. They now live once in the closet (reference data) and trips
+  // hold ids. Promotes any old per-trip garment, merging duplicates by name.
+  migrate_wardrobe() {
+    const d = State.data;
+    const closet = d.reference.wardrobe;
+    const byName = new Map();
+    closet.forEach(g => {
+      if (!g.cat) g.cat = Outfits.guessCat(g.name);
+      if (g.owner === undefined) g.owner = null;
+      byName.set(String(g.name || '').trim().toLowerCase(), g);
+    });
+
+    (d.itineraries || []).forEach(i => {
+      if (!Array.isArray(i.wardrobe)) { i.wardrobe = []; return; }
+      const ids = [], remap = new Map();
+      i.wardrobe.forEach(entry => {
+        if (typeof entry === 'number') { if (!ids.includes(entry)) ids.push(entry); return; }
+        if (!entry || typeof entry !== 'object' || !entry.name) return;
+        const key = String(entry.name).trim().toLowerCase();
+        let g = byName.get(key);
+        if (!g) {
+          g = { id: entry.id || Outfits.newId(), name: String(entry.name).trim(),
+                cat: entry.cat || Outfits.guessCat(entry.name), photo: entry.photo || null, owner: null };
+          closet.push(g); byName.set(key, g);
+        } else if (!g.photo && entry.photo) {
+          g.photo = entry.photo;
+        }
+        if (g.id !== entry.id) remap.set(entry.id, g.id);
+        if (!ids.includes(g.id)) ids.push(g.id);
+      });
+      i.wardrobe = ids;
+      (i.outfits || []).forEach(o => {
+        const items = [];
+        (o.items || []).forEach(id => {
+          const mapped = remap.has(id) ? remap.get(id) : id;
+          if (!items.includes(mapped)) items.push(mapped);
+        });
+        o.items = items;
+      });
     });
   },
 
@@ -2254,6 +2447,22 @@ const App = {
     else el.innerHTML = `<div class="card"><p>View not found.</p></div>`;
     Photos.hydrate();
   },
+
+  // Brief confirmation for actions with no dialog to close — dropping an
+  // outfit on a day, say, where the change is easy to miss.
+  toast(msg) {
+    let el = $('#toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'toast';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.classList.add('on');
+    clearTimeout(App._toastTimer);
+    App._toastTimer = setTimeout(() => el.classList.remove('on'), 2600);
+  },
+  _toastTimer: null,
 
   // Coalesces rapid-fire changes (e.g. ticking packing boxes) into one upload.
   _saveTimer: null,
@@ -3530,7 +3739,77 @@ const Outfits = {
     return n;
   },
 
-  garment(itin, id) { return (itin.wardrobe || []).find(g => g.id === id); },
+  newId() { return Date.now() + Math.floor(Math.random() * 100000); },
+
+  // ── The closet ───────────────────────────────────────────────
+  // One list of garments for every trip, kept in reference data so it travels
+  // with the Dropbox file. Trips store ids, never copies.
+  closet() {
+    const ref = State.data.reference || (State.data.reference = {});
+    if (!Array.isArray(ref.wardrobe)) ref.wardrobe = [];
+    return ref.wardrobe;
+  },
+
+  garment(itin, id) { return Outfits.closet().find(g => g.id === id); },
+
+  byName(name) {
+    const key = String(name).trim().toLowerCase();
+    return Outfits.closet().find(g => String(g.name || '').trim().toLowerCase() === key);
+  },
+
+  // Finds a garment by name, adding it to the closet when it's new.
+  ensure(name, cat) {
+    let g = Outfits.byName(name);
+    if (!g) {
+      g = { id: Outfits.newId(), name: String(name).trim(),
+            cat: cat || Outfits.guessCat(name), photo: null, owner: null };
+      Outfits.closet().push(g);
+    }
+    return g;
+  },
+
+  // Garments packed for this trip: the ones added to it, plus anything worn.
+  tripIds(itin) {
+    const ids = [];
+    const add = id => { if (typeof id === 'number' && !ids.includes(id)) ids.push(id); };
+    (Array.isArray(itin.wardrobe) ? itin.wardrobe : []).forEach(add);
+    (itin.outfits || []).forEach(o => (o.items || []).forEach(add));
+    return ids;
+  },
+
+  tripWardrobe(itin) {
+    return Outfits.tripIds(itin).map(id => Outfits.garment(itin, id)).filter(Boolean);
+  },
+
+  addToTrip(itin, id) {
+    if (!Array.isArray(itin.wardrobe)) itin.wardrobe = [];
+    if (!itin.wardrobe.includes(id)) itin.wardrobe.push(id);
+  },
+
+  // Closet garments this trip can pick from. Owners are optional — until at
+  // least one garment has one, every trip sees the whole closet.
+  forTrip(itin) {
+    const closet = Outfits.closet();
+    if (!closet.some(g => g.owner)) return closet;
+    return closet.filter(g => !g.owner || g.owner === itin.travellerId);
+  },
+
+  // Live filter for the closet drawer — hides chips in place so the search box
+  // keeps focus while you type.
+  filter_tray(v) {
+    State.closetQ = v;
+    const q = String(v).trim().toLowerCase();
+    document.querySelectorAll('.of-chips .of-chip').forEach(el => {
+      el.classList.toggle('hidden', !!q && !(el.dataset.name || '').includes(q));
+    });
+  },
+
+  // Trips a garment is used on — shown before deleting it from the closet.
+  tripsUsing(id) {
+    return (State.data.itineraries || []).filter(i =>
+      (Array.isArray(i.wardrobe) && i.wardrobe.includes(id)) ||
+      (i.outfits || []).some(o => (o.items || []).includes(id)));
+  },
 
   // Every garment with the dates it's worn — drives the reuse badges and
   // the "what to pack" view.
@@ -3546,7 +3825,7 @@ const Outfits = {
 
   summary(itin) {
     const wm = Outfits.wearMap(itin);
-    return (itin.wardrobe || []).map(g => ({
+    return Outfits.tripWardrobe(itin).map(g => ({
       ...g, dates: wm.get(g.id) || [], wears: (wm.get(g.id) || []).length,
     }));
   },
@@ -3564,6 +3843,230 @@ const Outfits = {
       worst = Math.max(worst, n);
     }
     return worst > 3;
+  },
+
+  // ── Rearranging (drag & drop, and the Move / Copy menu) ──────
+  outfit(itin, oid) { return (itin.outfits || []).find(o => o.id === oid); },
+
+  moveOutfit(itin, oid, date) {
+    const o = Outfits.outfit(itin, oid);
+    if (!o || o.date === date) return false;
+    o.date = date;
+    return true;
+  },
+
+  copyOutfit(itin, oid, date) {
+    const o = Outfits.outfit(itin, oid);
+    if (!o) return false;
+    if (!itin.outfits) itin.outfits = [];
+    itin.outfits.push({ ...o, id: Outfits.newId(), date, items: [...(o.items || [])] });
+    return true;
+  },
+
+  addGarment(itin, o, gid) {
+    if (!o || !Outfits.garment(itin, gid)) return false;
+    if (!Array.isArray(o.items)) o.items = [];
+    Outfits.addToTrip(itin, gid);
+    if (o.items.includes(gid)) return false;
+    o.items.push(gid);
+    return true;
+  },
+
+  // Where a garment goes when it's dropped on a day rather than on one outfit:
+  // the day's first outfit, or a new one when the day has none yet.
+  dropOnDay(itin, date, gid) {
+    let o = Outfits.forDate(itin, date)[0], created = false;
+    if (!o) {
+      const slot = Outfits.slotsFor(itin, date)[0] || {};
+      o = { id: Outfits.newId(), date, slot: slot.slot || 'Daytime',
+            label: slot.label || '', items: [], photo: null, notes: '' };
+      if (!itin.outfits) itin.outfits = [];
+      itin.outfits.push(o);
+      created = true;
+    }
+    return { outfit: o, added: Outfits.addGarment(itin, o, gid), created };
+  },
+};
+
+// ══════════════════════════════════════════════════════════════
+//  DRAG & DROP  (outfits between days, garments onto days)
+// ══════════════════════════════════════════════════════════════
+// Built on pointer events rather than HTML5 drag-and-drop, because this planner
+// gets used on a phone and dragstart never fires there. A touch drag waits for
+// a short press-and-hold so the day list can still be scrolled normally.
+const DnD = {
+  HOLD: 220,    // ms of holding still before a touch becomes a drag
+  SLOP: 8,      // px of movement that starts a mouse drag — or cancels a hold
+  EDGE: 100,    // px from the window edge where the list starts scrolling itself
+
+  st: null,     // the pending or active drag
+  endedAt: 0,
+
+  // True just after a drag, so the click it turns into gets swallowed.
+  recent() { return Date.now() - DnD.endedAt < 400; },
+
+  init() {
+    document.addEventListener('pointerdown', DnD.down, true);
+    document.addEventListener('pointermove', DnD.move);
+    document.addEventListener('pointerup', DnD.up);
+    document.addEventListener('pointercancel', DnD.up);
+    // Stops the page panning under an active touch drag, and stops the
+    // long-press turning into a text selection or share sheet.
+    document.addEventListener('touchmove', e => { if (DnD.st?.dragging) e.preventDefault(); }, { passive: false });
+    document.addEventListener('contextmenu', e => { if (DnD.st?.dragging) e.preventDefault(); });
+    document.addEventListener('click', e => {
+      if (!DnD.recent()) return;
+      e.stopPropagation(); e.preventDefault();
+    }, true);
+  },
+
+  down(e) {
+    if (DnD.st || e.button > 0) return;
+    const src = e.target.closest?.('[data-drag]');
+    if (!src) return;
+    if (e.target.closest('button, a, input, select, textarea')) return;
+    DnD.st = {
+      src, kind: src.dataset.drag,
+      id: Number(src.dataset.gid || src.dataset.oid),
+      fromDate: src.dataset.date || null,
+      itinId: Number(src.closest('[data-itin]')?.dataset.itin || State.tripId),
+      x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY,
+      touch: e.pointerType !== 'mouse',
+      alt: e.altKey, dragging: false, ghost: null, over: null, timer: null, raf: 0,
+    };
+    if (DnD.st.touch) DnD.st.timer = setTimeout(DnD.lift, DnD.HOLD);
+  },
+
+  move(e) {
+    const st = DnD.st;
+    if (!st) return;
+    st.x = e.clientX; st.y = e.clientY; st.alt = e.altKey;
+    if (!st.dragging) {
+      const far = Math.hypot(e.clientX - st.x0, e.clientY - st.y0);
+      if (st.touch) { if (far > DnD.SLOP * 1.5) DnD.reset(); return; }   // it's a scroll, not a drag
+      if (far <= DnD.SLOP) return;
+      DnD.lift();
+    }
+    DnD.paint();
+  },
+
+  lift() {
+    const st = DnD.st;
+    if (!st || st.dragging) return;
+    clearTimeout(st.timer);
+    st.dragging = true;
+    document.body.classList.add('dnd-on');
+
+    const r = st.src.getBoundingClientRect();
+    const ghost = st.src.cloneNode(true);
+    ghost.classList.add('dnd-ghost');
+    ghost.removeAttribute('data-drop');
+    ghost.querySelectorAll('.of-acts, .of-grip').forEach(el => el.remove());
+    ghost.style.width = Math.min(r.width, 320) + 'px';
+    ghost.insertAdjacentHTML('beforeend', '<div class="dnd-hint"></div>');
+    st.dx = st.x - r.left; st.dy = st.y - r.top;
+    st.ghost = ghost;
+    document.body.appendChild(ghost);
+    st.src.classList.add('dnd-src');
+    if (navigator.vibrate) navigator.vibrate(12);
+
+    st.raf = requestAnimationFrame(DnD.autoscroll);
+    DnD.paint();
+  },
+
+  paint() {
+    const st = DnD.st;
+    if (!st?.dragging) return;
+    st.ghost.style.transform = `translate(${st.x - st.dx}px,${st.y - st.dy}px)`;
+    const under = document.elementFromPoint(st.x, st.y);
+    const target = DnD.target(under?.closest?.('[data-drop]'));
+    if (target !== st.over) {
+      st.over?.classList.remove('dnd-over');
+      target?.classList.add('dnd-over');
+      st.over = target;
+    }
+    st.ghost.querySelector('.dnd-hint').textContent = DnD.hint(target);
+  },
+
+  // An outfit can only land on a day; a garment on a day or on one outfit.
+  target(el) {
+    const st = DnD.st;
+    if (!el) return null;
+    if (st.kind !== 'outfit') return el;
+    const day = el.dataset.drop === 'day' ? el : el.closest('[data-drop="day"]');
+    if (!day) return null;
+    return (day.dataset.date === st.fromDate && !st.alt) ? null : day;
+  },
+
+  hint(t) {
+    const st = DnD.st;
+    if (!t) return st.kind === 'outfit' ? 'Drop on a day' : 'Drop on a day or an outfit';
+    const verb = st.kind === 'outfit' ? (st.alt ? 'Copy to' : 'Move to') : 'Add to';
+    if (t.dataset.drop === 'day') return `${verb} ${fmt_date_short(t.dataset.date)}`;
+    const o = Outfits.outfit(find_itin(st.itinId) || {}, Number(t.dataset.oid));
+    return o ? `${verb} ${o.slot} · ${fmt_date_short(o.date)}` : verb;
+  },
+
+  // Keeps scrolling while the pointer is held near the top or bottom edge, so
+  // a day two weeks away is still reachable in one drag.
+  autoscroll() {
+    const st = DnD.st;
+    if (!st?.dragging) return;
+    const h = window.innerHeight;
+    if (st.y < DnD.EDGE)          window.scrollBy(0, -Math.ceil((DnD.EDGE - st.y) / 5));
+    else if (st.y > h - DnD.EDGE) window.scrollBy(0,  Math.ceil((st.y - (h - DnD.EDGE)) / 5));
+    st.raf = requestAnimationFrame(DnD.autoscroll);
+  },
+
+  up() {
+    const st = DnD.st;
+    if (!st) return;
+    const target = st.dragging ? st.over : null;
+    const dragged = st.dragging;
+    DnD.reset();
+    if (dragged) DnD.commit(st, target);
+  },
+
+  reset() {
+    const st = DnD.st;
+    DnD.st = null;
+    if (!st) return;
+    clearTimeout(st.timer);
+    cancelAnimationFrame(st.raf);
+    st.ghost?.remove();
+    st.src.classList.remove('dnd-src');
+    st.over?.classList.remove('dnd-over');
+    document.body.classList.remove('dnd-on');
+    if (st.dragging) DnD.endedAt = Date.now();
+  },
+
+  commit(st, target) {
+    if (!target) return;
+    const itin = find_itin(st.itinId);
+    if (!itin) return;
+    let msg;
+
+    if (st.kind === 'outfit') {
+      const date = target.dataset.date;
+      const copy = st.alt;
+      if (!(copy ? Outfits.copyOutfit(itin, st.id, date) : Outfits.moveOutfit(itin, st.id, date))) return;
+      msg = `Outfit ${copy ? 'copied' : 'moved'} to ${fmt_date_short(date)}.`;
+    } else {
+      const g = Outfits.garment(itin, st.id);
+      if (!g) return;
+      if (target.dataset.drop === 'outfit') {
+        const o = Outfits.outfit(itin, Number(target.dataset.oid));
+        if (!Outfits.addGarment(itin, o, st.id)) { App.toast(`${g.name} is already in that outfit.`); return; }
+        msg = `${g.name} → ${o.slot} on ${fmt_date_short(o.date)}`;
+      } else {
+        const date = target.dataset.date;
+        const r = Outfits.dropOnDay(itin, date, st.id);
+        if (!r.added && !r.created) { App.toast(`${g.name} is already on ${fmt_date_short(date)}.`); return; }
+        msg = `${g.name} → ${r.outfit.slot} on ${fmt_date_short(date)}${r.created ? ' (new outfit)' : ''}`;
+      }
+    }
+    App.render(); App.saveData();
+    App.toast(msg);
   },
 };
 
@@ -4253,77 +4756,233 @@ const Edit = {
     App.render(); App.saveData();
   },
 
-  _garment_form(itin, g) {
+  toggle_closet_tray() {
+    State.closetTray = !State.closetTray;
+    App.render_content();
+  },
+
+  dismiss_dnd_tip() {
+    localStorage.setItem('tip_outfit_dnd', 'done');
+    App.render_content();
+  },
+
+  _garment_form(g) {
     const cats = Outfits.CATS.map(c =>
       `<option value="${c}"${g.cat === c ? ' selected' : ''}>${Outfits.CAT_ICON[c]} ${c}</option>`).join('');
+    const people = (State.data.travellers || []).slice()
+      .sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`))
+      .map(t => `<option value="${t.id}"${g.owner === t.id ? ' selected' : ''}>${h(`${t.firstName} ${t.lastName}`.trim())}</option>`).join('');
     return `
       <div class="form-grid">
         <div class="form-group full">
           <label>Garment <span style="color:var(--red)">*</span></label>
           <input id="g-name" type="text" placeholder="e.g. Black yoga pants" value="${h(g.name || '')}" autocomplete="off">
-          <p class="hint" style="margin-top:6px">Add several at once by putting each on its own line.</p>
+          <p class="hint" style="margin-top:6px">Add several at once by putting each on its own line. Garments go
+            into your closet, so every trip can pick them.</p>
         </div>
-        <div class="form-group full">
+        <div class="form-group">
           <label>Category</label>
           <select id="g-cat"><option value="">— Auto-detect —</option>${cats}</select>
+        </div>
+        <div class="form-group">
+          <label>Whose is it?</label>
+          <select id="g-owner"><option value="">Anyone</option>${people}</select>
+          <p class="hint" style="margin-top:6px">Leave on Anyone unless it should only show up on one traveller's trips.</p>
         </div>
       </div>`;
   },
 
+  // Garments always land in the closet; when you add one from inside a trip it
+  // gets packed for that trip too.
   add_garment(itinId) {
-    const itin = find_itin(itinId);
-    Modal.show('Add Garment', Edit._garment_form(itin, {}), 'Add', () => {
+    const itin = itinId ? find_itin(itinId) : null;
+    Modal.show('Add Garment', Edit._garment_form({}), 'Add', () => {
       const names = gv('#g-name').split('\n').map(s => s.trim()).filter(Boolean);
       if (!names.length) { alert('Enter a garment name.'); return; }
-      if (!itin.wardrobe) itin.wardrobe = [];
-      const cat = gv('#g-cat');
-      let added = 0;
+      const cat   = gv('#g-cat');
+      const owner = gv('#g-owner') ? Number(gv('#g-owner')) : null;
+      let added = 0, packed = 0;
       names.forEach(name => {
-        if (itin.wardrobe.some(x => x.name.trim().toLowerCase() === name.toLowerCase())) return;
-        itin.wardrobe.push({
-          id: Date.now() + Math.floor(Math.random() * 100000),
-          name, cat: cat || Outfits.guessCat(name), photo: null,
-        });
-        added++;
+        const known = Outfits.byName(name);
+        const g = Outfits.ensure(name, cat);
+        if (!known) { g.owner = owner; added++; }
+        if (itin && !Outfits.tripIds(itin).includes(g.id)) { Outfits.addToTrip(itin, g.id); packed++; }
       });
-      if (!added) { alert('Already in your wardrobe.'); return; }
+      if (!added && !packed) { alert('Already in your closet and packed for this trip.'); return; }
       Modal.hide(); App.render(); App.saveData();
+      App.toast(added
+        ? `Added ${added} garment${added > 1 ? 's' : ''} to your closet.`
+        : `Packed ${packed} garment${packed > 1 ? 's' : ''} for this trip.`);
     });
     setTimeout(() => $('#g-name')?.focus(), 50);
   },
 
   edit_garment(itinId, gid) {
-    const itin = find_itin(itinId);
-    const g = Outfits.garment(itin, gid);
+    const g = Outfits.garment(null, gid);
     if (!g) return;
-    Modal.show('Edit Garment', Edit._garment_form(itin, g), 'Save', () => {
+    Modal.show('Edit Garment', Edit._garment_form(g), 'Save', () => {
       const name = gv('#g-name').split('\n')[0].trim();
       if (!name) { alert('Enter a garment name.'); return; }
-      g.name = name;
-      g.cat  = gv('#g-cat') || Outfits.guessCat(name);
+      const clash = Outfits.byName(name);
+      if (clash && clash.id !== g.id) { alert(`"${name}" is already in your closet.`); return; }
+      g.name  = name;
+      g.cat   = gv('#g-cat') || Outfits.guessCat(name);
+      g.owner = gv('#g-owner') ? Number(gv('#g-owner')) : null;
       Modal.hide(); App.render(); App.saveData();
     });
   },
 
-  delete_garment(itinId, gid) {
+  // Takes a garment off one trip. The closet keeps it.
+  remove_garment(itinId, gid) {
     const itin = find_itin(itinId);
     const g = Outfits.garment(itin, gid);
     const worn = (Outfits.wearMap(itin).get(gid) || []).length;
-    if (!confirm(`Remove "${g?.name}"${worn ? ` from your wardrobe and from ${worn} outfit${worn>1?'s':''}` : ''}?`)) return;
-    itin.wardrobe = (itin.wardrobe || []).filter(x => x.id !== gid);
+    if (!confirm(`Take "${g?.name}" off this trip${worn ? ` and out of ${worn} outfit${worn>1?'s':''}` : ''}? It stays in your closet.`)) return;
+    itin.wardrobe = (Array.isArray(itin.wardrobe) ? itin.wardrobe : []).filter(id => id !== gid);
     (itin.outfits || []).forEach(o => { o.items = (o.items || []).filter(id => id !== gid); });
     App.render(); App.saveData();
   },
 
-  async garment_photo(itinId, gid) {
+  // Throws a garment out for good, everywhere.
+  delete_garment(gid) {
+    const g = Outfits.garment(null, gid);
+    if (!g) return;
+    const trips = Outfits.tripsUsing(gid);
+    if (!confirm(`Delete "${g.name}" from your closet?${trips.length
+      ? ` It's on ${trips.length} trip${trips.length > 1 ? 's' : ''} and will come off ${trips.length > 1 ? 'those' : 'that one'} too.` : ''}`)) return;
+    State.data.reference.wardrobe = Outfits.closet().filter(x => x.id !== gid);
+    (State.data.itineraries || []).forEach(i => {
+      if (Array.isArray(i.wardrobe)) i.wardrobe = i.wardrobe.filter(id => id !== gid);
+      (i.outfits || []).forEach(o => { o.items = (o.items || []).filter(id => id !== gid); });
+    });
+    App.render(); App.saveData();
+  },
+
+  _pick_rows(list, chosen) {
+    return Outfits.CATS.map(cat => {
+      const gs = list.filter(g => g.cat === cat).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+      if (!gs.length) return '';
+      return `<div class="of-pick-cat">${Outfits.CAT_ICON[cat]} ${cat}</div>` +
+        gs.map(g => `
+          <div class="of-pick${chosen.has(g.id) ? ' on' : ''}" data-gid="${g.id}"
+               data-name="${h(String(g.name).toLowerCase())}" onclick="this.classList.toggle('on')">
+            <div class="bx">✓</div>
+            ${g.photo ? `<img data-photo="${h(g.photo)}" alt="">` : `<i class="ci">${Outfits.CAT_ICON[cat]}</i>`}
+            <span>${h(g.name)}</span>
+          </div>`).join('');
+    }).join('');
+  },
+
+  _filter_picks(v) {
+    const q = String(v).trim().toLowerCase();
+    document.querySelectorAll('.of-pick').forEach(el => {
+      el.classList.toggle('hidden', !!q && !(el.dataset.name || '').includes(q));
+    });
+  },
+
+  _filter_closet(v) {
+    const q = String(v).trim().toLowerCase();
+    document.querySelectorAll('.of-w-card[data-name]').forEach(el => {
+      el.classList.toggle('hidden', !!q && !(el.dataset.name || '').includes(q));
+    });
+    document.querySelectorAll('.pack-cat').forEach(cat => {
+      const any = [...cat.querySelectorAll('.of-w-card')].some(c => !c.classList.contains('hidden'));
+      cat.classList.toggle('hidden', !any);
+    });
+  },
+
+  add_from_closet(itinId) {
+    const itin  = find_itin(itinId);
+    const have  = new Set(Outfits.tripIds(itin));
+    const avail = Outfits.forTrip(itin).filter(g => !have.has(g.id));
+    if (!avail.length) { alert('Everything in your closet is already packed for this trip.'); return; }
+    Modal.show('Add from Closet', `
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Tick whatever you're bringing on this trip.</p>
+      ${avail.length > 8 ? `<input id="cl-q" type="text" placeholder="Filter garments…" oninput="Edit._filter_picks(this.value)">` : ''}
+      <div style="max-height:340px;overflow-y:auto;margin-top:8px">${Edit._pick_rows(avail, new Set())}</div>`,
+    'Add', () => {
+      const picked = [...document.querySelectorAll('.of-pick.on')].map(el => Number(el.dataset.gid));
+      Modal.hide();
+      if (!picked.length) return;
+      picked.forEach(id => Outfits.addToTrip(itin, id));
+      App.render(); App.saveData();
+      App.toast(`Packed ${picked.length} garment${picked.length > 1 ? 's' : ''} for this trip.`);
+    });
+    setTimeout(Photos.hydrate, 60);
+  },
+
+  // Tap-instead-of-drag route from the closet drawer onto a day.
+  place_garment(itinId, gid) {
+    if (DnD.recent()) return;
     const itin = find_itin(itinId);
     const g = Outfits.garment(itin, gid);
+    if (!g) return;
+    const groups = Outfits.days(itin).map((date, i) => {
+      const rows = Outfits.forDate(itin, date).map(o =>
+        `<option value="o:${o.id}"${(o.items || []).includes(gid) ? ' disabled' : ''}>${o.slot}${
+          (o.items || []).includes(gid) ? ' — already wearing it' : ''}</option>`).join('');
+      return `<optgroup label="Day ${i + 1} · ${fmt_date_short(date)}">
+        ${rows}<option value="d:${date}">+ New outfit this day</option></optgroup>`;
+    }).join('');
+    Modal.show(`Wear "${g.name}" on…`, `
+      <div class="form-group">
+        <label>Day and outfit</label>
+        <select id="pg-target">${groups}</select>
+      </div>
+      <p class="hint">Or drag the garment straight onto a day.</p>`, 'Add', () => {
+      const v = gv('#pg-target') || '';
+      Modal.hide();
+      let ok = false, where = '';
+      if (v.startsWith('o:')) {
+        const o = Outfits.outfit(itin, Number(v.slice(2)));
+        ok = Outfits.addGarment(itin, o, gid);
+        where = o ? `${o.slot} on ${fmt_date_short(o.date)}` : '';
+      } else if (v.startsWith('d:')) {
+        const date = v.slice(2);
+        const r = Outfits.dropOnDay(itin, date, gid);
+        ok = r.added; where = `${r.outfit.slot} on ${fmt_date_short(date)}`;
+      }
+      if (!ok) return;
+      App.render(); App.saveData();
+      App.toast(`${g.name} → ${where}`);
+    });
+  },
+
+  // Same job as dragging the card onto another day, for when dragging is awkward.
+  move_outfit(itinId, oid) {
+    const itin = find_itin(itinId);
+    const o = Outfits.outfit(itin, oid);
+    if (!o) return;
+    const opts = Outfits.days(itin).map((date, i) =>
+      `<option value="${date}"${date === o.date ? ' selected' : ''}>Day ${i + 1} · ${fmt_date_short(date)}${
+        date === o.date ? ' — where it is now' : ''}</option>`).join('');
+    Modal.show(`${o.slot} outfit — ${fmt_date(o.date)}`, `
+      <div class="form-grid">
+        <div class="form-group"><label>Day</label><select id="mo-date">${opts}</select></div>
+        <div class="form-group"><label>Move or copy</label>
+          <select id="mo-mode">
+            <option value="move">Move it there</option>
+            <option value="copy">Copy it there</option>
+          </select></div>
+      </div>
+      <p class="hint">The photo, garments and notes come along either way.</p>`, 'Apply', () => {
+      const date = gv('#mo-date'), copy = gv('#mo-mode') === 'copy';
+      const ok = copy ? Outfits.copyOutfit(itin, oid, date) : Outfits.moveOutfit(itin, oid, date);
+      Modal.hide();
+      if (!ok) return;
+      App.render(); App.saveData();
+      App.toast(`${copy ? 'Copied' : 'Moved'} to ${fmt_date_short(date)}.`);
+    });
+  },
+
+  async garment_photo(itinId, gid) {
+    const g = Outfits.garment(null, gid);
     if (!g) return;
     const file = await Photos.pick();
     if (!file) return;
     const st = $('#save-status'); if (st) st.textContent = 'Uploading photo…';
     try {
-      g.photo = await Photos.upload(itinId, file);
+      g.photo = await Photos.upload(itinId || 'closet', file);
       App.render(); App.saveData();
     } catch (e) { alert('Photo upload failed: ' + e.message); }
   },
@@ -4345,21 +5004,12 @@ const Edit = {
     const slots = Outfits.SLOTS.map(s =>
       `<option value="${s}"${o.slot === s ? ' selected' : ''}>${s}</option>`).join('');
     const chosen = new Set(o.items || []);
-    const wardrobe = itin.wardrobe || [];
-    const picker = !wardrobe.length
-      ? `<p style="font-size:13px;color:var(--muted)">Your wardrobe is empty — add garments in the box below and they'll be created and selected.</p>`
-      : Outfits.CATS.map(cat => {
-          const gs = wardrobe.filter(g => g.cat === cat);
-          if (!gs.length) return '';
-          return `<div class="of-pick-cat">${Outfits.CAT_ICON[cat]} ${cat}</div>` +
-            gs.map(g => `
-              <div class="of-pick${chosen.has(g.id) ? ' on' : ''}" data-gid="${g.id}"
-                   onclick="this.classList.toggle('on')">
-                <div class="bx">✓</div>
-                ${g.photo ? `<img data-photo="${h(g.photo)}" alt="">` : ''}
-                <span>${h(g.name)}</span>
-              </div>`).join('');
-        }).join('');
+    // Everything in the closet is on offer, not just what this trip has used
+    // before — the ones already worn today are ticked.
+    const closet = Outfits.forTrip(itin);
+    const picker = !closet.length
+      ? `<p style="font-size:13px;color:var(--muted)">Your closet is empty — type garments in the box below and they'll be created and selected.</p>`
+      : Edit._pick_rows(closet, chosen);
     return `
       <div class="form-grid">
         <div class="form-group">
@@ -4372,7 +5022,9 @@ const Edit = {
         </div>
       </div>
       <div style="margin-top:6px;border-top:1px solid var(--border);padding-top:12px">
-        <label style="font-size:13px;font-weight:600">Garments</label>
+        <label style="font-size:13px;font-weight:600">Garments <span style="font-weight:500;color:var(--muted)">from your closet</span></label>
+        ${closet.length > 8 ? `<input id="o-q" type="text" placeholder="Filter garments…" style="margin-top:8px"
+          oninput="Edit._filter_picks(this.value)">` : ''}
         <div style="max-height:280px;overflow-y:auto;margin-top:8px">${picker}</div>
       </div>
       <div class="form-group full" style="margin-top:12px">
@@ -4390,18 +5042,13 @@ const Edit = {
     o.label = gv('#o-label');
     o.notes = gv('#o-notes');
     const picked = [...document.querySelectorAll('.of-pick.on')].map(el => Number(el.dataset.gid));
-    // Any names typed into the box become wardrobe garments and join this outfit.
+    // Any names typed into the box join the closet and then this outfit.
     gv('#o-new').split('\n').map(s => s.trim()).filter(Boolean).forEach(name => {
-      if (!itin.wardrobe) itin.wardrobe = [];
-      let g = itin.wardrobe.find(x => x.name.trim().toLowerCase() === name.toLowerCase());
-      if (!g) {
-        g = { id: Date.now() + Math.floor(Math.random() * 100000),
-              name, cat: Outfits.guessCat(name), photo: null };
-        itin.wardrobe.push(g);
-      }
+      const g = Outfits.ensure(name);
       if (!picked.includes(g.id)) picked.push(g.id);
     });
     o.items = picked;
+    picked.forEach(id => Outfits.addToTrip(itin, id));
   },
 
   add_outfit(itinId, date) {
@@ -4434,18 +5081,18 @@ const Edit = {
     App.render(); App.saveData();
   },
 
-  // Feeds the wardrobe into the Packing List so clothing lands in one checklist.
+  // Feeds this trip's garments into the Packing List so clothing lands in one checklist.
   wardrobe_to_packing(itinId) {
     const itin = find_itin(itinId);
     const wm = Outfits.wearMap(itin);
-    const entries = (itin.wardrobe || []).map(g => {
+    const entries = Outfits.tripWardrobe(itin).map(g => {
       const wears = (wm.get(g.id) || []).length;
       return { item: g.name, category: 'Clothing', source: 'manual',
                reason: wears ? `Worn ${wears}× on this trip` : '' };
     });
-    if (!entries.length) { alert('Your wardrobe is empty.'); return; }
+    if (!entries.length) { alert('Nothing is packed for this trip yet.'); return; }
     const n = Packing._add(itin, entries);
-    if (!n) { alert('All wardrobe garments are already on your packing list.'); return; }
+    if (!n) { alert('Every garment is already on your packing list.'); return; }
     alert(`Added ${n} garment${n>1?'s':''} to your packing list.`);
     State.tripTab = 'packing'; App.render(); App.saveData();
   },
@@ -4547,6 +5194,10 @@ const REF_CONFIGS = {
   priceTypes:    { label:'Price Types',           icon:'💰', refKey:'priceTypes',   valueKey:null,    simple:true,  newRec:()=>'' },
   usage:         { label:'Transfer Usage Types',  icon:'🔄', refKey:'usage',        valueKey:null,    simple:true,  newRec:()=>'' },
   packingEssentials: { label:'Packing Essentials', icon:'🧳', refKey:'packingEssentials', valueKey:null, simple:true, newRec:()=>'' },
+  wardrobe:      { label:'Wardrobe / Closet',     icon:'👗', refKey:'wardrobe',     valueKey:'name',  simple:false, custom:'wardrobe',
+                   cols:['name','cat'], colLabels:['Garment','Category'],
+                   fields:[{id:'r-name',key:'name',label:'Garment',req:true},{id:'r-cat',key:'cat',label:'Category'}],
+                   newRec:()=>({id:Date.now(),name:'',cat:'',photo:null,owner:null}) },
 };
 
 // ── Reference List View ──────────────────────────────────────
@@ -4565,9 +5216,63 @@ Views.ref_home = function() {
     </div>`;
 };
 
+// The closet: every garment you own, in one place, shared by all trips.
+Views.ref_wardrobe = function() {
+  const closet = Outfits.closet();
+  const people = new Map((State.data.travellers || []).map(t => [t.id, `${t.firstName} ${t.lastName}`.trim()]));
+  const back = `<button class="btn btn-secondary btn-sm" onclick="State.view='ref_home';App.render()" style="margin-bottom:16px">← Reference Data</button>`;
+  const intro = `<p style="font-size:13.5px;color:var(--muted);margin-bottom:14px;line-height:1.5;max-width:640px">
+      Every garment you own, in one list. Trips pick from here, so a shirt only ever gets typed in once —
+      add it on one trip and it's waiting on the next. Deleting from here removes it from every trip.
+    </p>`;
+  if (!closet.length) {
+    return `${back}${intro}
+      <div style="margin-bottom:16px"><button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_garment(null)">+ Add Garment</button></div>
+      <div class="empty-state"><div class="icon">👗</div>
+        <p>Your closet is empty.<br><small style="font-size:13px">Add garments here, or from any trip's Outfits tab — either way they end up in this list.</small></p></div>`;
+  }
+  const sorted = [...closet].sort((a, b) =>
+    Outfits.CATS.indexOf(a.cat) - Outfits.CATS.indexOf(b.cat) || String(a.name).localeCompare(String(b.name)));
+  return `${back}${intro}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+      <button class="btn-add-comp" style="margin-bottom:0" onclick="Edit.add_garment(null)">+ Add Garment</button>
+      <input type="text" placeholder="Filter garments…" style="max-width:240px" oninput="Edit._filter_closet(this.value)">
+    </div>
+    ${Outfits.CATS.map(cat => {
+      const gs = sorted.filter(g => g.cat === cat);
+      if (!gs.length) return '';
+      return `
+        <div class="pack-cat">
+          <h4>${Outfits.CAT_ICON[cat]} ${cat} <span style="font-weight:600;color:#cbd5e1">${gs.length}</span></h4>
+          <div class="of-wardrobe-grid">
+            ${gs.map(g => {
+              const trips = Outfits.tripsUsing(g.id).length;
+              return `
+                <div class="of-w-card" data-name="${h(String(g.name).toLowerCase())}">
+                  <div class="of-w-photo" onclick="${g.photo ? `Photos.lightbox('${h(g.photo)}')` : `Edit.garment_photo(null,${g.id})`}">
+                    ${g.photo ? `<img data-photo="${h(g.photo)}" alt="${h(g.name)}">` : '📷'}
+                  </div>
+                  <div class="of-w-meta">
+                    <div class="nm">${h(g.name)}</div>
+                    <div class="sub">${trips ? `On ${trips} trip${trips > 1 ? 's' : ''}` : 'Not on a trip yet'}${
+                      g.owner && people.has(g.owner) ? ` · ${h(people.get(g.owner))}` : ''}</div>
+                    <div style="display:flex;gap:4px;margin-top:7px">
+                      <button class="btn-edit" style="flex:1" onclick="Edit.edit_garment(null,${g.id})">Edit</button>
+                      <button class="btn-del" title="Delete from closet" onclick="Edit.delete_garment(${g.id})">×</button>
+                    </div>
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+    }).join('')}
+    <p style="font-size:12px;color:var(--muted);margin-top:8px">${closet.length} garment${closet.length !== 1 ? 's' : ''}</p>`;
+};
+
 Views.ref_list = function(key) {
   const cfg = REF_CONFIGS[key];
   if (!cfg) return '<div class="card"><p>Unknown list.</p></div>';
+  if (cfg.custom === 'wardrobe') return Views.ref_wardrobe();
   const rawList = State.data.reference[cfg.refKey]||[];
   const sorted = rawList.map((item,i)=>({item,i}))
     .sort((a,b)=>{
@@ -5592,6 +6297,7 @@ const AIImport = {
 };
 
 // Start the app
+DnD.init();
 App.init();
 </script>
 </body>
