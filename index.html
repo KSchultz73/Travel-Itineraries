@@ -255,6 +255,14 @@
       padding: 5px 12px; font-size: 13px; font-weight: 500;
     }
     .photo-link.on-hero:hover { background: rgba(255,255,255,.2); }
+    .pl-steps { margin-top: 8px; }
+    .pl-steps summary {
+      font-size: 12.5px; font-weight: 600; color: var(--blue); cursor: pointer;
+    }
+    .pl-steps ol { margin: 10px 0 0 18px; padding: 0; }
+    .pl-steps li { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin-bottom: 7px; }
+    .pl-steps li b { color: var(--text); font-weight: 600; }
+    .pl-steps p { font-size: 12px; color: var(--muted); line-height: 1.6; margin-top: 10px; }
 
     /* ── Trip List ─────────────────────────────────────── */
     .search-bar {
@@ -3574,8 +3582,18 @@ const Photos = {
 // whichever photo service you use. The link is built from a template holding
 // {start} and {end} placeholders, which keeps services the presets don't cover
 // (self-hosted Immich, Synology Photos, …) a matter of pasting in a URL.
+//
+// Apple is the odd one out: nothing on iCloud.com takes a date in a URL, so the
+// photos on your iPhone are only reachable through a Shortcut. The link hands
+// the two dates to a shortcut you keep on the phone, which reads the library
+// in place — no copying your camera roll into another service.
 const PhotoLinks = {
   PRESETS: {
+    apple: {
+      label: 'Apple Photos on iPhone / iPad / Mac',
+      shortcut: true,
+      hint: 'Runs a shortcut on your device that shows the photos you took during the trip. Needs a one-time setup — steps below.',
+    },
     google: {
       label: 'Google Photos',
       url: 'https://photos.google.com/search/%23date_range:{start:YYYYMMDD}-{end:YYYYMMDD}',
@@ -3587,35 +3605,56 @@ const PhotoLinks = {
       hint: 'Searches your own Flickr photos by date taken.',
     },
     icloud: {
-      label: 'Apple iCloud Photos',
+      label: 'iCloud Photos on the web',
       url: 'https://www.icloud.com/photos/',
-      hint: 'iCloud has no date-search link, so this just opens your library — scroll to the trip dates.',
+      hint: 'iCloud.com takes no date in a link, so this just opens your library — scroll back to the trip dates.',
     },
     amazon: {
       label: 'Amazon Photos',
       url: 'https://www.amazon.com/photos/all',
-      hint: 'Amazon Photos has no date-search link, so this just opens your library.',
+      hint: 'Amazon Photos takes no date in a link, so this just opens your library.',
     },
     custom: { label: 'Custom URL…', url: '', hint: '' },
     off:    { label: 'None — hide photo links', url: '', hint: '' },
   },
-  DEFAULT_PRESET: 'google',
+  DEFAULT_PRESET: 'apple',
+  DEFAULT_SHORTCUT: 'Trip Photos',
+  SAFE_SCHEME: /^(https?|shortcuts):/i,
 
   preset()   { return localStorage.getItem('photo_link_preset') || this.DEFAULT_PRESET; },
   buffer()   { return Number(localStorage.getItem('photo_link_buffer') || 0); },
-  template() {
-    const p = this.preset();
-    if (p === 'off') return '';
-    if (p === 'custom') return localStorage.getItem('photo_link_custom') || '';
-    return this.PRESETS[p]?.url || this.PRESETS[this.DEFAULT_PRESET].url;
-  },
+  shortcutName() { return localStorage.getItem('photo_link_shortcut') || this.DEFAULT_SHORTCUT; },
   label() { return this.PRESETS[this.preset()]?.label || 'your photos'; },
 
-  save(preset, custom, buffer) {
+  // iPadOS reports itself as a Mac, which is fine — Macs run Shortcuts too.
+  onAppleDevice() { return /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent); },
+
+  // The shortcut is handed "start,end"; dates never contain a comma.
+  shortcutUrl(name) {
+    return `shortcuts://run-shortcut?name=${encodeURIComponent(name || this.DEFAULT_SHORTCUT)}`
+         + '&input=text&text={start},{end}';
+  },
+
+  template(preset, opts = {}) {
+    const p = preset || this.preset();
+    if (p === 'off')    return '';
+    if (p === 'custom') return opts.custom ?? localStorage.getItem('photo_link_custom') ?? '';
+    if (p === 'apple') {
+      // A Windows or Android browser can't run the shortcut, so fall back to
+      // the plain iCloud library rather than a link that does nothing.
+      return this.onAppleDevice() ? this.shortcutUrl(opts.shortcut ?? this.shortcutName())
+                                  : this.PRESETS.icloud.url;
+    }
+    return this.PRESETS[p]?.url || '';
+  },
+
+  save(preset, { custom = '', shortcut = '', buffer = 0 } = {}) {
     localStorage.setItem('photo_link_preset', preset);
     localStorage.setItem('photo_link_buffer', String(buffer || 0));
     if (custom) localStorage.setItem('photo_link_custom', custom);
     else localStorage.removeItem('photo_link_custom');
+    if (shortcut && shortcut !== this.DEFAULT_SHORTCUT) localStorage.setItem('photo_link_shortcut', shortcut);
+    else localStorage.removeItem('photo_link_shortcut');
   },
 
   _shift(iso, days) {
@@ -3649,7 +3688,7 @@ const PhotoLinks = {
 
   url(itin) {
     const tpl = this.template();
-    if (!/^https?:\/\//i.test(tpl)) return '';
+    if (!this.SAFE_SCHEME.test(tpl)) return '';
     const range = this.range(itin);
     if (!range) return '';
     return this.fill(tpl, range, itin.title);
@@ -3662,20 +3701,37 @@ const PhotoLinks = {
     return `Open ${this.label()} for ${span}`;
   },
 
+  // A new tab suits a website; handing shortcuts:// to one leaves a blank tab
+  // behind, so those open in place and iOS switches to the Shortcuts app.
+  _target(url) {
+    return /^https?:/i.test(url) ? ' target="_blank" rel="noopener"' : '';
+  },
+
   // Inside trip cards and table rows, which are themselves clickable.
   chip(itin, label = '📷 Photos') {
     const u = this.url(itin);
     if (!u) return '';
-    return `<a class="photo-link" href="${h(u)}" target="_blank" rel="noopener"
+    return `<a class="photo-link" href="${h(u)}"${this._target(u)}
       onclick="event.stopPropagation()" title="${h(this.tooltip(itin))}">${label}</a>`;
   },
 
   heroBtn(itin) {
     const u = this.url(itin);
     if (!u) return '';
-    return `<a class="btn btn-sm photo-link on-hero" href="${h(u)}" target="_blank" rel="noopener"
+    return `<a class="btn btn-sm photo-link on-hero" href="${h(u)}"${this._target(u)}
       title="${h(this.tooltip(itin))}">📷 Trip Photos</a>`;
   },
+
+  // Written out rather than shipped as a downloadable shortcut file, because
+  // iOS only installs shortcuts it has signed itself.
+  SHORTCUT_STEPS: [
+    'Open the <b>Shortcuts</b> app and tap <b>+</b>, then rename the shortcut to exactly the name above.',
+    'Add <b>Split Text</b> — Text: <b>Shortcut Input</b>, Separator: <b>Custom</b>, and type a comma.',
+    'Add <b>Get Item from List</b> — <b>First Item</b> of Split Text. Add <b>Set Variable</b> and name it <b>Start</b>.',
+    'Add <b>Get Item from List</b> — <b>Last Item</b> of Split Text. Add <b>Adjust Date</b> — <b>Add 1 Day</b> (so the last day of the trip is included). Add <b>Set Variable</b> and name it <b>End</b>.',
+    'Add <b>Find All Photos where</b> — <b>Date Taken</b> <b>is after</b> <b>Start</b>, and add a second filter <b>Date Taken</b> <b>is before</b> <b>End</b>. Sort by Date Taken, oldest first, and switch <b>Limit</b> off.',
+    'Add <b>Quick Look</b> at the end, then tap Done.',
+  ],
 
   settings() {
     const preset = this.preset();
@@ -3695,9 +3751,24 @@ const PhotoLinks = {
         </select>
         <p class="hint" id="pl-hint">${h(this.PRESETS[preset]?.hint || '')}</p>
       </div>
+      <div class="form-group" id="pl-shortcut-group">
+        <label>Shortcut Name</label>
+        <input id="pl-shortcut" type="text" spellcheck="false" autocomplete="off"
+          value="${h(this.shortcutName())}" oninput="PhotoLinks._preview()">
+        <p class="hint">Must match the shortcut on your iPhone exactly, capitals and all.</p>
+        <details class="pl-steps">
+          <summary>One-time setup on your iPhone (about two minutes)</summary>
+          <ol>${this.SHORTCUT_STEPS.map(s => `<li>${s}</li>`).join('')}</ol>
+          <p>
+            The shortcut syncs to your iPad and Mac through iCloud, so the 📷 links work there too.
+            Nothing leaves your device and no photos are copied anywhere — it reads the library in place.
+            On Windows or Android the links fall back to iCloud.com.
+          </p>
+        </details>
+      </div>
       <div class="form-group" id="pl-url-group">
         <label>Link Template</label>
-        <input id="pl-url" type="url" spellcheck="false" autocomplete="off"
+        <input id="pl-url" type="text" spellcheck="false" autocomplete="off"
           placeholder="https://photos.example.com/search?from={start}&to={end}"
           value="${h(preset === 'custom' ? custom : this.PRESETS[preset]?.url || '')}"
           oninput="PhotoLinks._preview()">
@@ -3716,17 +3787,25 @@ const PhotoLinks = {
       <div class="form-group">
         <label>Preview — ${h(sample.title)}</label>
         <div class="redirect-uri-box" id="pl-preview" style="word-break:break-all;font-size:12px"></div>
-        <p class="hint"><a id="pl-test" href="#" target="_blank" rel="noopener"
-          style="color:var(--blue);text-decoration:underline">Test this link</a></p>
+        <p class="hint" id="pl-note"></p>
+        <p class="hint"><a id="pl-test" href="#" style="color:var(--blue);text-decoration:underline">Test this link</a></p>
       </div>`;
     Modal.show('Photo Links', body, 'Save', () => {
       const p = $('#pl-preset').value;
       const u = $('#pl-url').value.trim();
-      if (p !== 'off' && u && !/^https?:\/\//i.test(u)) {
+      if (p === 'custom' && u && !/^https?:\/\//i.test(u)) {
         alert('The link template needs to start with http:// or https://');
         return;
       }
-      this.save(p, p === 'custom' ? u : '', $('#pl-buffer').value);
+      if (p === 'apple' && !$('#pl-shortcut').value.trim()) {
+        alert('Please give the name of the shortcut on your iPhone.');
+        return;
+      }
+      this.save(p, {
+        custom:   p === 'custom' ? u : '',
+        shortcut: $('#pl-shortcut').value.trim(),
+        buffer:   $('#pl-buffer').value,
+      });
       Modal.hide();
       App.render();
     });
@@ -3737,12 +3816,12 @@ const PhotoLinks = {
   _onPreset(initial) {
     const p = initial || $('#pl-preset').value;
     const cfg = this.PRESETS[p] || {};
-    const urlInput = $('#pl-url');
     if (!initial) {
-      urlInput.value = p === 'custom' ? (localStorage.getItem('photo_link_custom') || '') : (cfg.url || '');
+      $('#pl-url').value = p === 'custom' ? (localStorage.getItem('photo_link_custom') || '') : (cfg.url || '');
     }
-    urlInput.readOnly = p !== 'custom';
-    $('#pl-url-group').style.display = p === 'off' ? 'none' : '';
+    $('#pl-url').readOnly = p !== 'custom';
+    $('#pl-url-group').style.display      = (p === 'off' || cfg.shortcut) ? 'none' : '';
+    $('#pl-shortcut-group').style.display = cfg.shortcut ? '' : 'none';
     $('#pl-hint').textContent = cfg.hint || '';
     this._preview();
   },
@@ -3750,15 +3829,20 @@ const PhotoLinks = {
   _preview() {
     const box = $('#pl-preview'), test = $('#pl-test');
     if (!box) return;
-    const tpl  = $('#pl-url').value.trim();
+    const preset = $('#pl-preset').value;
+    const tpl  = this.template(preset, { custom: $('#pl-url').value.trim(), shortcut: $('#pl-shortcut').value.trim() });
     const pad  = Number($('#pl-buffer').value || 0);
     const itin = this._sample;
     const start = itin.startDate || itin.endDate, end = itin.endDate || itin.startDate;
     const range = { start: this._shift(start, -pad), end: this._shift(end, pad) };
-    const url = /^https?:\/\//i.test(tpl) ? this.fill(tpl, range, itin.title) : '';
+    const url = this.SAFE_SCHEME.test(tpl) ? this.fill(tpl, range, itin.title) : '';
     box.textContent = url || 'No link — trips will show no photo button.';
     test.style.display = url ? '' : 'none';
     test.href = url || '#';
+    test.target = /^https?:/i.test(url) ? '_blank' : '';
+    $('#pl-note').textContent = preset === 'apple' && !this.onAppleDevice()
+      ? 'This browser can’t run shortcuts, so here the links open iCloud.com. On your iPhone, iPad or Mac they run the shortcut.'
+      : '';
   },
 };
 
