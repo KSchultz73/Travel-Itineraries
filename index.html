@@ -3629,10 +3629,13 @@ const PhotoLinks = {
   // iPadOS reports itself as a Mac, which is fine — Macs run Shortcuts too.
   onAppleDevice() { return /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent); },
 
-  // The shortcut is handed "start,end"; dates never contain a comma.
+  // The shortcut is handed "start,next"; dates never contain a comma. Sending
+  // the day after the trip ends, rather than the end date, means the shortcut
+  // needs no date arithmetic of its own — the Adjust Date action it used to
+  // need was the step people wired up wrong most often.
   shortcutUrl(name) {
     return `shortcuts://run-shortcut?name=${encodeURIComponent(name || this.DEFAULT_SHORTCUT)}`
-         + '&input=text&text={start},{end}';
+         + '&input=text&text={start},{next}';
   },
 
   template(preset, opts = {}) {
@@ -3671,17 +3674,23 @@ const PhotoLinks = {
       .replace(/MM/g, m).replace(/DD/g, d);
   },
 
+  // "next" is the day after the trip ends, for services — and shortcuts —
+  // whose end of range is exclusive.
+  _range(start, end, pad) {
+    const last = this._shift(end, pad);
+    return { start: this._shift(start, -pad), end: last, next: this._shift(last, 1) };
+  },
+
   // A one-day trip, or one with only a start date, still gets a usable range.
   range(itin) {
     const start = itin.startDate || itin.endDate;
     const end   = itin.endDate   || itin.startDate;
     if (!start) return null;
-    const pad = this.buffer();
-    return { start: this._shift(start, -pad), end: this._shift(end, pad) };
+    return this._range(start, end, this.buffer());
   },
 
   fill(template, range, title) {
-    return template.replace(/\{(start|end|title)(?::([^}]+))?\}/g, (_, key, pattern) =>
+    return template.replace(/\{(start|end|next|title)(?::([^}]+))?\}/g, (_, key, pattern) =>
       key === 'title' ? encodeURIComponent(title || '')
                       : encodeURIComponent(this._fmt(range[key], pattern)));
   },
@@ -3726,18 +3735,20 @@ const PhotoLinks = {
   // iOS only installs shortcuts it has signed itself.
   SHORTCUT_STEPS: [
     'Open the <b>Shortcuts</b> app and tap <b>+</b>, then rename the shortcut to exactly the name above.',
-    'Add <b>Split Text</b> — the action reads “Split <b>Shortcut Input</b> by <b>New Lines</b>”. Tap <b>New Lines</b>, choose <b>Custom</b>, then type a single comma into the box that appears beside it.',
-    'Add <b>Get Item from List</b> — it reads “Get <b>First Item</b> from <b>Split Text</b>”, which is already what you want.',
-    'Add <b>Get Dates from Input</b> below it. The dates arrive from this page as plain text and the photo search will not read text as a date, so without this the shortcut stops with “couldn’t convert from Text to Date”. Then add <b>Set Variable</b>, name it <b>Start</b>, and check that it is set to the <b>Dates</b> output and not to <b>Item from List</b>.',
+    'Add <b>Split Text</b> — the action reads “Split <b>Shortcut Input</b> by <b>New Lines</b>”. Tap <b>New Lines</b>, choose <b>Custom</b>, then type a single comma into the box that appears beside it. This page sends the two dates with a comma between them, and nothing else in them contains one.',
+    'Add <b>Get Item from List</b> — it reads “Get <b>First Item</b> from <b>Split Text</b>”, which is already the first date.',
+    'Add <b>Get Dates from Input</b>. It should read “Get dates from <b>Item from List</b>”. The dates arrive from this page as plain text and the photo filter will not read text as a date, so this is the step that turns one into the other — its output is called <b>Dates</b>.',
+    'Add <b>Set Variable</b> and name it <b>Start</b>. Whatever it already points at, tap that and choose <b>Clear Variable</b>, then pick <b>Dates</b>, so the row reads “Set variable <b>Start</b> to <b>Dates</b>”. If it points at <b>Item from List</b> instead, the variable holds text again and the shortcut will stop with “couldn’t convert from Text to Date”.',
     'Add another <b>Get Item from List</b>. It arrives reading “Get <b>First Item</b> from <b>Start</b>”, because Shortcuts always points a new action at the step above it — tap <b>Start</b>, choose <b>Clear Variable</b>, then pick <b>Split Text</b> so it reads the whole list again. Now tap <b>First Item</b> and change it to <b>Last Item</b>.',
-    'Add <b>Adjust Date</b> directly below it and set it to add <b>1 day</b>, which keeps the last day of the trip from being left out. It has to read “Add 1 day to <b>Item from List</b>” — if it names <b>Start</b> or anything else, tap that and choose <b>Clear Variable</b>. Then add <b>Set Variable</b>, name it <b>End</b>, and point it at <b>Adjusted Date</b>, not at <b>Item from List</b>.',
+    'Add a second <b>Get Dates from Input</b> and check that it reads “Get dates from <b>Item from List</b>” — if it names <b>Start</b> or <b>Dates</b>, tap that, choose <b>Clear Variable</b>, and pick <b>Item from List</b>.',
+    'Add a second <b>Set Variable</b>, name it <b>End</b>, and point it at <b>Dates</b> just as you did for <b>Start</b>. The two halves of the shortcut are now identical apart from <b>First</b>/<b>Last Item</b> and the variable name.',
     'Add <b>Find Photos</b>. It grabs the step above it the same way, so it arrives reading “Filter <b>End</b> where…” — tap <b>End</b> and choose <b>Clear Variable</b>, leaving “Find <b>Photos</b> where…”. Some versions word it “Find <b>All Photos</b> where…”; either is right, so long as no variable is named. Otherwise it searches that one date instead of your library.',
     'Tap <b>Add Filter</b>. The row arrives as <b>Date Taken</b> <b>is on</b> — tap <b>is on</b> and change it to <b>is after</b>.',
     'Now touch and hold the date at the end of that row and choose <b>Select Variable</b>, then tap <b>Start</b>. A plain tap only opens a calendar, which is why it looks as though variables are not allowed here. If holding the empty date does nothing, tap it and pick any day from the calendar first, then touch and hold the date it filled in. Add a second filter the same way and set it to <b>Date Taken</b> <b>is before</b> <b>End</b>.',
     'Switch <b>Limit</b> off, so you get the whole trip rather than the first few photos.',
     'Add <b>Quick Look</b> at the very end, then tap Done.',
   ],
-  SHORTCUT_TIP: 'Everything shown in blue in the Shortcuts app is a menu — tap it to change it. A few of them, dates especially, open a picker on a tap and only offer <b>Select Variable</b> when you touch and hold instead.',
+  SHORTCUT_TIP: 'Everything shown in blue in the Shortcuts app is a menu — tap it to change it. A few of them, dates especially, open a picker on a tap and only offer <b>Select Variable</b> when you touch and hold instead. A name shown in <i>red</i> is a variable nothing above it sets, so that action has no value to work with.',
 
   // Every action names whatever sits above it at the moment you add it, so the
   // finished list is easier to check against than the steps that built it.
@@ -3747,10 +3758,20 @@ const PhotoLinks = {
     'Get dates from <b>Item from List</b>',
     'Set variable <b>Start</b> to <b>Dates</b>',
     'Get <b>Last Item</b> from <b>Split Text</b>',
-    'Add <b>1</b> <b>day</b> to <b>Item from List</b>',
-    'Set variable <b>End</b> to <b>Adjusted Date</b>',
+    'Get dates from <b>Item from List</b>',
+    'Set variable <b>End</b> to <b>Dates</b>',
     'Find <b>Photos</b> where <b>All</b> of the following are true — <b>Date Taken</b> <b>is after</b> <b>Start</b>, <b>Date Taken</b> <b>is before</b> <b>End</b>, with <b>Limit</b> off',
     'Show <b>Photos</b> in Quick Look',
+  ],
+
+  // Each of these is a mistake the shortcut can't tell you about plainly, so
+  // they are matched to what you actually see on screen when it happens.
+  SHORTCUT_FIXES: [
+    '<b>“Shortcuts couldn’t convert from Text to Date”</b> — one of the <b>Set Variable</b> steps points at <b>Item from List</b> rather than at <b>Dates</b>, so it is handing plain text to the photo filter. Tap the variable it names, choose <b>Clear Variable</b>, then pick <b>Dates</b>.',
+    '<b>A name shows in red</b> — nothing above that action sets it. Either its <b>Set Variable</b> step is missing, or the action using it sits above the step that sets it. <b>Start</b> and <b>End</b> must both be set before <b>Find Photos</b>, and no step may use <b>End</b> before the one that sets it.',
+    '<b>There is an <i>Adjust Date</i> step</b> — it came from an earlier version of these instructions. Delete it, along with any <b>Set Variable</b> pointing at <b>Adjusted Date</b>: this page now sends the day after the trip ends, so the shortcut does no date arithmetic of its own.',
+    '<b>Only a few photos appear</b> — <b>Limit</b> is still switched on in <b>Find Photos</b>.',
+    '<b>No photos at all</b> — check that <b>Split Text</b> splits on a plain comma with no space, and that the filters read <b>is after</b> <b>Start</b> and <b>is before</b> <b>End</b> rather than the other way round.',
   ],
 
   settings() {
@@ -3775,13 +3796,18 @@ const PhotoLinks = {
         <label>Shortcut Name</label>
         <input id="pl-shortcut" type="text" spellcheck="false" autocomplete="off"
           value="${h(this.shortcutName())}" oninput="PhotoLinks._preview()">
-        <p class="hint">Must match the shortcut on your iPhone exactly, capitals and all.</p>
+        <p class="hint">
+          Must match the shortcut on your iPhone exactly, capitals and all. The link hands it the
+          start date and the day after the end date, separated by a comma.
+        </p>
         <details class="pl-steps">
           <summary>One-time setup on your iPhone (about five minutes)</summary>
           <p>${this.SHORTCUT_TIP}</p>
           <ol>${this.SHORTCUT_STEPS.map(s => `<li>${s}</li>`).join('')}</ol>
           <p>When you are done, the actions should read:</p>
           <ol>${this.SHORTCUT_FINAL.map(s => `<li>${s}</li>`).join('')}</ol>
+          <p>If it stops with an error, this is almost always why:</p>
+          <ul>${this.SHORTCUT_FIXES.map(s => `<li>${s}</li>`).join('')}</ul>
           <p>
             The shortcut syncs to your iPad and Mac through iCloud, so the 📷 links work there too.
             Nothing leaves your device and no photos are copied anywhere — it reads the library in place.
@@ -3798,7 +3824,8 @@ const PhotoLinks = {
         <p class="hint">
           Placeholders: <code>{start}</code> and <code>{end}</code> (YYYY-MM-DD), or with a format —
           <code>{start:YYYYMMDD}</code>, <code>{end:MM/DD/YYYY}</code>, <code>{start:unix}</code>.
-          <code>{title}</code> inserts the trip name.
+          <code>{next}</code> is the day after the trip ends, for a service whose end of range is
+          exclusive. <code>{title}</code> inserts the trip name.
         </p>
       </div>
       <div class="form-group">
@@ -3857,7 +3884,7 @@ const PhotoLinks = {
     const pad  = Number($('#pl-buffer').value || 0);
     const itin = this._sample;
     const start = itin.startDate || itin.endDate, end = itin.endDate || itin.startDate;
-    const range = { start: this._shift(start, -pad), end: this._shift(end, pad) };
+    const range = this._range(start, end, pad);
     const url = this.SAFE_SCHEME.test(tpl) ? this.fill(tpl, range, itin.title) : '';
     box.textContent = url || 'No link — trips will show no photo button.';
     test.style.display = url ? '' : 'none';
