@@ -3727,12 +3727,31 @@ const PhotoLinks = {
   SHORTCUT_STEPS: [
     'Open the <b>Shortcuts</b> app and tap <b>+</b>, then rename the shortcut to exactly the name above.',
     'Add <b>Split Text</b> — the action reads “Split <b>Shortcut Input</b> by <b>New Lines</b>”. Tap <b>New Lines</b>, choose <b>Custom</b>, then type a single comma into the box that appears beside it.',
-    'Add <b>Get Item from List</b> — it reads “Get <b>First Item</b> from <b>Split Text</b>”, which is already what you want. Add <b>Set Variable</b> below it and type <b>Start</b> as the name.',
-    'Add another <b>Get Item from List</b>, tap <b>First Item</b> and change it to <b>Last Item</b>. Add <b>Adjust Date</b>, tap the unit and set it to add <b>1 day</b> — that keeps the last day of the trip from being left out. Add <b>Set Variable</b> and name it <b>End</b>.',
-    'Add <b>Find Photos</b> — it reads “Find All Photos where…”. Tap <b>Add Filter</b> and set <b>Date Taken</b> <b>is after</b>, then tap the value and pick the <b>Start</b> variable. Add a second filter: <b>Date Taken</b> <b>is before</b> <b>End</b>. Switch <b>Limit</b> off.',
+    'Add <b>Get Item from List</b> — it reads “Get <b>First Item</b> from <b>Split Text</b>”, which is already what you want.',
+    'Add <b>Get Dates from Input</b> below it. The dates arrive from this page as plain text and the photo search will not read text as a date, so without this the shortcut stops with “couldn’t convert from Text to Date”. Then add <b>Set Variable</b>, name it <b>Start</b>, and check that it is set to the <b>Dates</b> output and not to <b>Item from List</b>.',
+    'Add another <b>Get Item from List</b>. It arrives reading “Get <b>First Item</b> from <b>Start</b>”, because Shortcuts always points a new action at the step above it — tap <b>Start</b>, choose <b>Clear Variable</b>, then pick <b>Split Text</b> so it reads the whole list again. Now tap <b>First Item</b> and change it to <b>Last Item</b>.',
+    'Add <b>Adjust Date</b> directly below it and set it to add <b>1 day</b>, which keeps the last day of the trip from being left out. It has to read “Add 1 day to <b>Item from List</b>” — if it names <b>Start</b> or anything else, tap that and choose <b>Clear Variable</b>. Then add <b>Set Variable</b>, name it <b>End</b>, and point it at <b>Adjusted Date</b>, not at <b>Item from List</b>.',
+    'Add <b>Find Photos</b>. It grabs the step above it the same way, so it arrives reading “Filter <b>End</b> where…” — tap <b>End</b> and choose <b>Clear Variable</b>, leaving “Find <b>Photos</b> where…”. Some versions word it “Find <b>All Photos</b> where…”; either is right, so long as no variable is named. Otherwise it searches that one date instead of your library.',
+    'Tap <b>Add Filter</b>. The row arrives as <b>Date Taken</b> <b>is on</b> — tap <b>is on</b> and change it to <b>is after</b>.',
+    'Now touch and hold the date at the end of that row and choose <b>Select Variable</b>, then tap <b>Start</b>. A plain tap only opens a calendar, which is why it looks as though variables are not allowed here. If holding the empty date does nothing, tap it and pick any day from the calendar first, then touch and hold the date it filled in. Add a second filter the same way and set it to <b>Date Taken</b> <b>is before</b> <b>End</b>.',
+    'Switch <b>Limit</b> off, so you get the whole trip rather than the first few photos.',
     'Add <b>Quick Look</b> at the very end, then tap Done.',
   ],
-  SHORTCUT_TIP: 'Everything shown in blue in the Shortcuts app is a menu — tap it to change it.',
+  SHORTCUT_TIP: 'Everything shown in blue in the Shortcuts app is a menu — tap it to change it. A few of them, dates especially, open a picker on a tap and only offer <b>Select Variable</b> when you touch and hold instead.',
+
+  // Every action names whatever sits above it at the moment you add it, so the
+  // finished list is easier to check against than the steps that built it.
+  SHORTCUT_FINAL: [
+    'Split <b>Shortcut Input</b> by <b>Custom</b> <b>,</b>',
+    'Get <b>First Item</b> from <b>Split Text</b>',
+    'Get dates from <b>Item from List</b>',
+    'Set variable <b>Start</b> to <b>Dates</b>',
+    'Get <b>Last Item</b> from <b>Split Text</b>',
+    'Add <b>1</b> <b>day</b> to <b>Item from List</b>',
+    'Set variable <b>End</b> to <b>Adjusted Date</b>',
+    'Find <b>Photos</b> where <b>All</b> of the following are true — <b>Date Taken</b> <b>is after</b> <b>Start</b>, <b>Date Taken</b> <b>is before</b> <b>End</b>, with <b>Limit</b> off',
+    'Show <b>Photos</b> in Quick Look',
+  ],
 
   settings() {
     const preset = this.preset();
@@ -3758,9 +3777,11 @@ const PhotoLinks = {
           value="${h(this.shortcutName())}" oninput="PhotoLinks._preview()">
         <p class="hint">Must match the shortcut on your iPhone exactly, capitals and all.</p>
         <details class="pl-steps">
-          <summary>One-time setup on your iPhone (about two minutes)</summary>
+          <summary>One-time setup on your iPhone (about five minutes)</summary>
           <p>${this.SHORTCUT_TIP}</p>
           <ol>${this.SHORTCUT_STEPS.map(s => `<li>${s}</li>`).join('')}</ol>
+          <p>When you are done, the actions should read:</p>
+          <ol>${this.SHORTCUT_FINAL.map(s => `<li>${s}</li>`).join('')}</ol>
           <p>
             The shortcut syncs to your iPad and Mac through iCloud, so the 📷 links work there too.
             Nothing leaves your device and no photos are copied anywhere — it reads the library in place.
