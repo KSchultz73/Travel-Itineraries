@@ -3730,7 +3730,7 @@ const PhotoLinks = {
     'Add <b>Get Item from List</b> — it reads “Get <b>First Item</b> from <b>Split Text</b>”, which is already what you want. Add <b>Set Variable</b> below it and type <b>Start</b> as the name.',
     'Add another <b>Get Item from List</b>. It arrives reading “Get <b>First Item</b> from <b>Start</b>”, because Shortcuts always points a new action at the step above it — tap <b>Start</b>, choose <b>Clear Variable</b>, then pick <b>Split Text</b> so it reads the whole list again. Now tap <b>First Item</b> and change it to <b>Last Item</b>.',
     'Add <b>Adjust Date</b>, tap the unit and set it to add <b>1 day</b> — that keeps the last day of the trip from being left out. Add <b>Set Variable</b> and name it <b>End</b>.',
-    'Add <b>Find Photos</b> — it reads “Find All Photos where…”. Tap <b>Add Filter</b>, then set the row to <b>Date Taken</b> <b>is after</b>.',
+    'Add <b>Find Photos</b>. It grabs the step above it the same way, so it arrives reading “Filter <b>End</b> where…” — tap <b>End</b> and choose <b>Clear Variable</b> until it reads “Find <b>All Photos</b> where…”, or it will search that one date instead of your library. Tap <b>Add Filter</b>, then set the row to <b>Date Taken</b> <b>is after</b>.',
     'Touch and hold the blue date at the end of that row — a plain tap only opens a calendar, which is why there is no way to pick a variable from it — and choose <b>Select Variable</b>, then tap <b>Start</b>. Add a second filter the same way and set it to <b>Date Taken</b> <b>is before</b> <b>End</b>.',
     'Switch <b>Limit</b> off, so you get the whole trip rather than the first few photos.',
     'Add <b>Quick Look</b> at the very end, then tap Done.',
