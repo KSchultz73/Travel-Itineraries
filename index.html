@@ -3739,6 +3739,20 @@ const PhotoLinks = {
   ],
   SHORTCUT_TIP: 'Everything shown in blue in the Shortcuts app is a menu — tap it to change it. A few of them, dates especially, open a picker on a tap and only offer <b>Select Variable</b> when you touch and hold instead.',
 
+  // Every action names whatever sits above it at the moment you add it, so the
+  // finished list is easier to check against than the steps that built it.
+  SHORTCUT_FINAL: [
+    'Split <b>Shortcut Input</b> by <b>Custom</b> <b>,</b>',
+    'Get <b>First Item</b> from <b>Split Text</b>',
+    'Get dates from <b>Item from List</b>',
+    'Set variable <b>Start</b> to <b>Dates</b>',
+    'Get <b>Last Item</b> from <b>Split Text</b>',
+    'Add <b>1</b> <b>day</b> to <b>Item from List</b>',
+    'Set variable <b>End</b> to <b>Adjusted Date</b>',
+    'Find <b>Photos</b> where <b>All</b> of the following are true — <b>Date Taken</b> <b>is after</b> <b>Start</b>, <b>Date Taken</b> <b>is before</b> <b>End</b>, with <b>Limit</b> off',
+    'Show <b>Photos</b> in Quick Look',
+  ],
+
   settings() {
     const preset = this.preset();
     const custom = localStorage.getItem('photo_link_custom') || '';
@@ -3766,6 +3780,8 @@ const PhotoLinks = {
           <summary>One-time setup on your iPhone (about five minutes)</summary>
           <p>${this.SHORTCUT_TIP}</p>
           <ol>${this.SHORTCUT_STEPS.map(s => `<li>${s}</li>`).join('')}</ol>
+          <p>When you are done, the actions should read:</p>
+          <ol>${this.SHORTCUT_FINAL.map(s => `<li>${s}</li>`).join('')}</ol>
           <p>
             The shortcut syncs to your iPad and Mac through iCloud, so the 📷 links work there too.
             Nothing leaves your device and no photos are copied anywhere — it reads the library in place.
