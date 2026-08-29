@@ -3727,7 +3727,8 @@ const PhotoLinks = {
   SHORTCUT_STEPS: [
     'Open the <b>Shortcuts</b> app and tap <b>+</b>, then rename the shortcut to exactly the name above.',
     'Add <b>Split Text</b> — the action reads “Split <b>Shortcut Input</b> by <b>New Lines</b>”. Tap <b>New Lines</b>, choose <b>Custom</b>, then type a single comma into the box that appears beside it.',
-    'Add <b>Get Item from List</b> — it reads “Get <b>First Item</b> from <b>Split Text</b>”, which is already what you want. Add <b>Set Variable</b> below it and type <b>Start</b> as the name.',
+    'Add <b>Get Item from List</b> — it reads “Get <b>First Item</b> from <b>Split Text</b>”, which is already what you want.',
+    'Add <b>Get Dates from Input</b> below it. The dates arrive from this page as plain text and the photo search will not read text as a date, so without this the shortcut stops with “couldn’t convert from Text to Date”. Then add <b>Set Variable</b>, name it <b>Start</b>, and check that it is set to the <b>Dates</b> output and not to <b>Item from List</b>.',
     'Add another <b>Get Item from List</b>. It arrives reading “Get <b>First Item</b> from <b>Start</b>”, because Shortcuts always points a new action at the step above it — tap <b>Start</b>, choose <b>Clear Variable</b>, then pick <b>Split Text</b> so it reads the whole list again. Now tap <b>First Item</b> and change it to <b>Last Item</b>.',
     'Add <b>Adjust Date</b>, tap the unit and set it to add <b>1 day</b> — that keeps the last day of the trip from being left out. Add <b>Set Variable</b> and name it <b>End</b>.',
     'Add <b>Find Photos</b>. It grabs the step above it the same way, so it arrives reading “Filter <b>End</b> where…” — tap <b>End</b> and choose <b>Clear Variable</b>, leaving “Find <b>Photos</b> where…”. Some versions word it “Find <b>All Photos</b> where…”; either is right, so long as no variable is named. Otherwise it searches that one date instead of your library.',
@@ -3762,7 +3763,7 @@ const PhotoLinks = {
           value="${h(this.shortcutName())}" oninput="PhotoLinks._preview()">
         <p class="hint">Must match the shortcut on your iPhone exactly, capitals and all.</p>
         <details class="pl-steps">
-          <summary>One-time setup on your iPhone (about two minutes)</summary>
+          <summary>One-time setup on your iPhone (about five minutes)</summary>
           <p>${this.SHORTCUT_TIP}</p>
           <ol>${this.SHORTCUT_STEPS.map(s => `<li>${s}</li>`).join('')}</ol>
           <p>
