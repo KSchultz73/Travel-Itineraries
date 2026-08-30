@@ -206,6 +206,22 @@
     #content { flex: 1; padding: 24px; max-width: 1100px; width: 100%; margin: 0 auto; }
 
     /* ── Dashboard ─────────────────────────────────────── */
+    /* Which copy of the page you are looking at, said out loud: from a Home
+       Screen icon there is no address bar to check, and no way to reload. */
+    .version-strip {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      flex-wrap: wrap; margin-bottom: 16px; padding: 8px 14px; border-radius: 8px;
+      background: var(--card); box-shadow: var(--shadow); cursor: pointer;
+      font-size: 12px; color: var(--muted);
+    }
+    .version-strip code {
+      background: #f1f5f9; border-radius: 4px; padding: 1px 6px;
+      font-size: 12px; color: var(--text); font-weight: 600;
+    }
+    .version-strip.stale {
+      background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; font-weight: 600;
+    }
+    .version-strip.stale code { background: #fef3c7; color: #92400e; }
     .stats-grid {
       display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;
     }
@@ -1214,6 +1230,7 @@ const Views = {
     const totalCruises  = d.itineraries.reduce((s,i)=>s+i.cruises.length,0);
 
     let html = `
+      ${Version.strip()}
       <div class="stats-grid">
         <div class="stat-card accent-blue" onclick="Router.go('trips')" style="cursor:pointer" title="View all trips">
           <div class="label">Total Trips</div>
@@ -8073,36 +8090,80 @@ const AIImport = {
 // button and no way to tell which copy of itself iOS has kept. So it says which
 // version it is, and asks the server whether a newer one exists. A query string
 // is what makes both the check and the reload skip the stored copy.
-const PAGE_VERSION = '2026-08-30.9';
+const PAGE_VERSION = '2026-08-30.10';
 
 const Version = {
   MIN_GAP: 5 * 60 * 1000,
   _last: 0,
+  state: 'unknown',   // unknown | current | stale | offline
+  newer: '',
+
+  NOTE: {
+    unknown: 'checking for a newer one…',
+    current: 'up to date',
+    offline: 'couldn’t reach the server to check',
+  },
+  note() {
+    return this.state === 'stale'
+      ? `version ${this.newer} is published — tap to load it`
+      : this.NOTE[this.state];
+  },
+
+  // Sits at the top of the dashboard, so the answer to "am I on the new one?"
+  // never needs asking.
+  strip() {
+    const stale = this.state === 'stale';
+    return `<div class="version-strip${stale ? ' stale' : ''}" id="version-strip"
+      onclick="Version.${stale ? 'reload' : 'recheck'}()"
+      title="${stale ? 'Load the published version' : 'Check for a newer version'}">
+      <span>Version <code>${h(PAGE_VERSION)}</code></span>
+      <span>${h(this.note())}</span></div>`;
+  },
+
+  _paint() {
+    const el = document.getElementById('version-strip');
+    if (el) el.outerHTML = this.strip();
+  },
+
+  recheck() {
+    this._last = 0;
+    this.state = 'unknown';
+    this._paint();
+    this.check();
+  },
 
   async check() {
     if (Date.now() - this._last < this.MIN_GAP) return;
     this._last = Date.now();
     try {
       const res = await fetch(`${location.pathname}?v=${Date.now()}`, { cache: 'no-store' });
-      if (!res.ok) return;
+      if (!res.ok) throw new Error(String(res.status));
       // The definition above is the first match in the file; this pattern's own
       // source is the second, which is why order matters here.
       const m = new RegExp("PAGE_VERSION = '([^']+)'").exec(await res.text());
-      if (m && m[1] !== PAGE_VERSION) this._offer(m[1]);
-    } catch (e) { /* offline, or opened as a file — nothing to offer */ }
+      this.newer = m ? m[1] : PAGE_VERSION;
+      this.state = this.newer === PAGE_VERSION ? 'current' : 'stale';
+      if (this.state === 'stale') this._offer();
+    } catch (e) {
+      this.state = 'offline';   // no network, or opened as a file
+    }
+    this._paint();
   },
 
   reload() { location.replace(`${location.pathname}?v=${Date.now()}`); },
 
-  _offer(newer) {
+  // Also said as a banner, since a stale page matters most on the views that
+  // have no room for the strip — and on the way back from Shortcuts.
+  _offer() {
     if (document.getElementById('version-toast')) return;
     const el = document.createElement('div');
     el.id = 'version-toast';
     el.className = 'pl-toast';
     el.innerHTML = `This page is version <code>${h(PAGE_VERSION)}</code> and
-      <code>${h(newer)}</code> is now published. <b>Tap here to load it.</b>`;
+      <code>${h(this.newer)}</code> is now published. <b>Tap here to load it.</b>`;
     el.onclick = () => this.reload();
     document.body.appendChild(el);
+    setTimeout(() => el.remove(), 30000);
   },
 };
 
