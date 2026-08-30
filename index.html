@@ -3629,13 +3629,20 @@ const PhotoLinks = {
   // iPadOS reports itself as a Mac, which is fine — Macs run Shortcuts too.
   onAppleDevice() { return /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent); },
 
-  // The shortcut is handed "start,next"; dates never contain a comma. Sending
-  // the day after the trip ends, rather than the end date, means the shortcut
-  // needs no date arithmetic of its own — the Adjust Date action it used to
-  // need was the step people wired up wrong most often.
+  // Get Dates from Input is Apple's natural-language date detector, and on a
+  // bare 2026-06-01 it can find no date at all — which leaves the shortcut's
+  // variables empty instead of failing outright. A written-out month is what
+  // it reads most dependably. The format holds no comma of its own, because a
+  // comma is what separates the two dates.
+  SHORTCUT_DATE: 'MMMM D YYYY',
+
+  // Sending the day after the trip ends, rather than the end date, means the
+  // shortcut needs no date arithmetic of its own — the Adjust Date action it
+  // used to need was the step people wired up wrong most often.
   shortcutUrl(name) {
+    const dates = `{start:${this.SHORTCUT_DATE}},{next:${this.SHORTCUT_DATE}}`;
     return `shortcuts://run-shortcut?name=${encodeURIComponent(name || this.DEFAULT_SHORTCUT)}`
-         + '&input=text&text={start},{next}';
+         + `&input=text&text=${dates}`;
   },
 
   template(preset, opts = {}) {
@@ -3666,12 +3673,19 @@ const PhotoLinks = {
     return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
   },
 
+  MONTHS: ['January','February','March','April','May','June',
+           'July','August','September','October','November','December'],
+
+  // One pass over the pattern, longest token first. Replacing token by token
+  // instead would let a substituted value be rewritten again — "December"
+  // contains a D, and a month name would be eaten by a later day pattern.
   _fmt(iso, pattern) {
     const [y, m, d] = iso.split('-');
     if (pattern === 'unix') return String(Date.UTC(+y, +m - 1, +d) / 1000);
-    return (pattern || 'YYYY-MM-DD')
-      .replace(/YYYY/g, y).replace(/YY/g, y.slice(2))
-      .replace(/MM/g, m).replace(/DD/g, d);
+    const name = this.MONTHS[+m - 1];
+    const token = { YYYY: y, YY: y.slice(2), MMMM: name, MMM: name.slice(0, 3),
+                    MM: m, M: String(+m), DD: d, D: String(+d) };
+    return (pattern || 'YYYY-MM-DD').replace(/YYYY|YY|MMMM|MMM|MM|M|DD|D/g, t => token[t]);
   },
 
   // "next" is the day after the trip ends, for services — and shortcuts —
@@ -3739,7 +3753,7 @@ const PhotoLinks = {
   // iOS only installs shortcuts it has signed itself.
   SHORTCUT_STEPS: [
     'Open the <b>Shortcuts</b> app and tap <b>+</b>, then rename the shortcut to exactly the name above.',
-    'Add <b>Split Text</b> — the action reads “Split <b>Shortcut Input</b> by <b>New Lines</b>”. Tap <b>New Lines</b>, choose <b>Custom</b>, then type a single comma into the box that appears beside it. This page sends the two dates with a comma between them, and nothing else in them contains one.',
+    'Add <b>Split Text</b> — the action reads “Split <b>Shortcut Input</b> by <b>New Lines</b>”. Tap <b>New Lines</b>, choose <b>Custom</b>, then type a single comma into the box that appears beside it. This page sends the two dates as “June 1 2026,June 12 2026” — a comma between them and none inside either one.',
     'Add <b>Get Item from List</b> — it reads “Get <b>First Item</b> from <b>Split Text</b>”, which is already the first date.',
     'Add <b>Get Dates from Input</b>. It should read “Get dates from <b>Item from List</b>”. The dates arrive from this page as plain text and the photo filter will not read text as a date, so this is the step that turns one into the other — its output is called <b>Dates</b>.',
     'Add <b>Set Variable</b> and name it <b>Start</b>. Whatever it already points at, tap that and choose <b>Clear Variable</b>, then pick <b>Dates</b>, so the row reads “Set variable <b>Start</b> to <b>Dates</b>”. If it points at <b>Item from List</b> instead, the variable holds text again and the shortcut will stop with “couldn’t convert from Text to Date”.',
@@ -3751,6 +3765,7 @@ const PhotoLinks = {
     'Now touch and hold the date at the end of that row and choose <b>Select Variable</b>, then tap <b>Start</b>. A plain tap only opens a calendar, which is why it looks as though variables are not allowed here. If holding the empty date does nothing, tap it and pick any day from the calendar first, then touch and hold the date it filled in. Add a second filter the same way and set it to <b>Date Taken</b> <b>is before</b> <b>End</b>. Because this page sends the day after the trip ends, that still takes in everything you shot on the last day.',
     'Switch <b>Limit</b> off, so you get the whole trip rather than the first few photos.',
     'Add <b>Quick Look</b> at the very end, then tap Done.',
+    'Test it by tapping a trip’s 📷 link on this page, not with the ▶ button in the Shortcuts editor. The editor hands the shortcut no input, so run from the editor it has no dates to work with and finds nothing, however well it is built.',
   ],
   SHORTCUT_TIP: 'Everything shown in blue in the Shortcuts app is a menu — tap it to change it. A few of them, dates especially, open a picker on a tap and only offer <b>Select Variable</b> when you touch and hold instead. A name shown in <i>red</i> is a variable nothing above it sets, so that action has no value to work with.',
 
@@ -3777,6 +3792,8 @@ const PhotoLinks = {
     '<b>Only a few photos appear</b> — <b>Limit</b> is still switched on in <b>Find Photos</b>.',
     '<b>“The Quick Look action wasn’t passed any items to preview”</b> — nothing is broken: the shortcut ran all the way through and the search matched no photos. To see what it searched for, add <b>Show Alert</b> just above <b>Find Photos</b>, tap its <b>Message</b> field, and put <b>Start</b> and <b>End</b> in by tapping them in the strip of variables just above the keyboard. An alert that appears with no text at all and only a Continue button is one whose message was left empty. Delete the alert once you know.',
     '<b>Easier than typing into an alert</b> — tap the ⊖ beside the <b>Date Taken</b> <b>is before</b> <b>End</b> filter to take it off and run the shortcut again. If photos appear now, <b>End</b> holds the wrong date; if nothing appears even with that filter gone, the fault is in <b>Start</b> or in <b>Find Photos</b> itself. Put the filter back afterwards.',
+    '<b>The alert shows both dates blank</b> — the shortcut was given no text to read. Running it from the ▶ button inside the Shortcuts app does exactly this: the editor passes no input, so <b>Shortcut Input</b> is empty and every step after it has nothing to work on. Tapping a trip’s 📷 link on this page is the only way the dates reach it, so test it from there.',
+    '<b>Still blank when launched from the 📷 link</b> — reload this page on the device first. Earlier versions sent dates as 2026-06-01, and <b>Get Dates from Input</b> often finds no date at all in that form, which leaves the variables empty rather than raising an error. The current link sends them written out, as “June 1 2026”.',
     '<b>That alert shows the same date twice</b> — the second <b>Get Dates from Input</b> is reading the first <b>Item from List</b> rather than the last, so the range has no width and nothing can fall inside it. Tap <b>Item from List</b> in that step, choose <b>Clear Variable</b>, and pick the <b>Item from List</b> listed last.',
     '<b>The alert shows the trip’s first day and the day after its last</b> — then the dates are right and the search is at fault. Check that <b>Find Photos</b> names no variable of its own (“Find <b>Photos</b> where…”, never “Filter <b>End</b> where…”), that the filters read <b>is after</b> <b>Start</b> and <b>is before</b> <b>End</b> and not the other way round, that <b>All</b> is selected rather than <b>Any</b>, and that <b>Limit</b> is off. If all of that is right, this device simply holds no photos from those days — worth testing on a trip you know you photographed on this phone.',
   ],
