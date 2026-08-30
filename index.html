@@ -3952,6 +3952,7 @@ const PhotoLinks = {
   // Each of these is a mistake the shortcut can't tell you about plainly, so
   // they are matched to what you actually see on screen when it happens.
   SHORTCUT_FIXES: [
+    '<b>Start here: a two-action shortcut that shows what arrives</b> — before touching the real one, find out whether anything reaches Shortcuts at all. In the Shortcuts app tap <b>+</b>, rename it <b>Photo Test</b>, tap the <b>ⓘ</b> at the bottom and switch on <b>Show in Share Sheet</b>. Add one action: <b>Quick Look</b>. Tap whatever it names, choose <b>Clear Variable</b>, then pick <b>Shortcut Input</b>. That is the whole shortcut — no dates, no numbers, no variables, no filters, nothing that can be built wrong. Come back here, type <b>Photo Test</b> into <b>Shortcut Name</b> above, press <b>Save</b>, and tap a trip’s 📷 link. Whatever the page sent is now on your screen. Two numbers with a comma between them means the whole chain works and the fault is inside the real shortcut. Two dates means the page is sending the wrong thing and <b>Date Format Sent</b> is what needs changing. A blank or empty preview means nothing arrives, and no amount of work on the real shortcut will help until that is fixed. Put <b>Trip Photos</b> back in the box when you are done.',
     '<b>“Adjust Date failed because Shortcuts couldn’t convert from Text to Number”</b> — something reached <b>Adjust Date</b> that is not a number, and it can only be one of three things: a date, if the link is sending dates rather than day counts; text that holds a number but was handed over as text, which some versions refuse to read; or <i>nothing at all</i>, because empty is not a number either. Tapping a 📷 link now says which was sent in a dark banner along the bottom of this page, and that banner is still there when you come back from Shortcuts — so read it first. A banner showing dates against a shortcut built to subtract days is the whole fault, and the fix is in this panel, not on your phone: set <b>Date Format Sent</b> above to <b>Days ago, not dates</b> and press <b>Save</b>.',
     '<b>The red error is still on the action after you change something</b> — it is a record of the last run, not a live warning, and nothing clears it but running the shortcut again. So an editor still showing red tells you nothing about the change you just made: what counts is what happens on screen <i>while</i> it runs, which is why the tests here all end in something you can see — a box asking you to type, or photos.',
     '<b>Proving the shortcut on its own</b> — with “If there’s no input” set to <b>Ask For</b> <b>Text</b>, tap the <b>▶</b> in the Shortcuts editor. Started from there it gets no input, so it must stop and ask; type <b>10,0</b> and tap Done. If the last ten days of photos appear, every action below the input is right and only what the page sends is wrong. If it still fails on <b>Adjust Date</b> having been handed a plain <b>10</b>, then that version really will not read a number out of text, and it needs <b>Get Numbers from Input</b> as in the day-count steps below. This separates the two halves of the problem completely, which no other test does.',
@@ -4070,6 +4071,12 @@ const PhotoLinks = {
         <p class="hint" id="pl-note"></p>
         <p class="hint"><a id="pl-test" href="#" onclick="PhotoLinks.arm(this)"
           style="color:var(--blue);text-decoration:underline">Test this link</a></p>
+        <p class="hint">
+          Page version <code>${h(PAGE_VERSION)}</code>. If that isn’t the version you were told to
+          expect, this is a stored copy of an older page —
+          <a href="#" onclick="Version.reload();return false"
+            style="color:var(--blue);text-decoration:underline">load the current one</a>.
+        </p>
       </div>`;
     Modal.show('Photo Links', body, 'Save', () => {
       const p = $('#pl-preset').value;
@@ -8059,9 +8066,55 @@ const AIImport = {
   },
 };
 
+// ══════════════════════════════════════════════════════════════
+//  PAGE VERSION
+// ══════════════════════════════════════════════════════════════
+// Kept as an icon on the Home Screen, this page has no address bar, no reload
+// button and no way to tell which copy of itself iOS has kept. So it says which
+// version it is, and asks the server whether a newer one exists. A query string
+// is what makes both the check and the reload skip the stored copy.
+const PAGE_VERSION = '2026-08-30.9';
+
+const Version = {
+  MIN_GAP: 5 * 60 * 1000,
+  _last: 0,
+
+  async check() {
+    if (Date.now() - this._last < this.MIN_GAP) return;
+    this._last = Date.now();
+    try {
+      const res = await fetch(`${location.pathname}?v=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) return;
+      // The definition above is the first match in the file; this pattern's own
+      // source is the second, which is why order matters here.
+      const m = new RegExp("PAGE_VERSION = '([^']+)'").exec(await res.text());
+      if (m && m[1] !== PAGE_VERSION) this._offer(m[1]);
+    } catch (e) { /* offline, or opened as a file — nothing to offer */ }
+  },
+
+  reload() { location.replace(`${location.pathname}?v=${Date.now()}`); },
+
+  _offer(newer) {
+    if (document.getElementById('version-toast')) return;
+    const el = document.createElement('div');
+    el.id = 'version-toast';
+    el.className = 'pl-toast';
+    el.innerHTML = `This page is version <code>${h(PAGE_VERSION)}</code> and
+      <code>${h(newer)}</code> is now published. <b>Tap here to load it.</b>`;
+    el.onclick = () => this.reload();
+    document.body.appendChild(el);
+  },
+};
+
 // Start the app
 DnD.init();
 App.init();
+setTimeout(() => Version.check(), 2500);
+// Coming back from Shortcuts doesn't reload the page, so this is the moment
+// worth re-checking: it is exactly when a stale copy causes the most confusion.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) Version.check();
+});
 </script>
 </body>
 </html>
