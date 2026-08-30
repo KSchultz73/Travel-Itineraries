@@ -3858,6 +3858,8 @@ const PhotoLinks = {
   // Each of these is a mistake the shortcut can't tell you about plainly, so
   // they are matched to what you actually see on screen when it happens.
   SHORTCUT_FIXES: [
+    '<b>“Adjust Date failed because Shortcuts couldn’t convert from Text to Number”</b> — the shortcut has the day-count steps but the link is still sending dates, and a date is not a number. Set <b>Date Format Sent</b> above to <b>Days ago, not dates</b> and press <b>Save</b>. The two lines under the preview spell out what the link carries and which steps that needs, so they should agree with what is on your phone.',
+    '<b>The same error with day counts confirmed arriving</b> — if the alert shows something like “2370,2347” and <b>Adjust Date</b> still refuses it, that version will not read a number out of text by itself. Add <b>Get Numbers from Input</b> directly after each <b>Get Item from List</b>, then point the number in <b>Adjust Date</b> at <b>Numbers</b> instead of <b>Item from List</b>.',
     '<b>“Shortcuts couldn’t convert from Text to Date” on <i>Adjust Date</i></b> — that step is left over from an earlier version of these instructions, and it cannot read text at all. Delete it and the <b>Set Variable</b> under it, then put <b>Get Dates from Input</b> and “Set variable <b>End</b> to <b>Dates</b>” in their place. This page sends the day after the trip ends, so nothing in the shortcut needs to add a day.',
     '<b>The same error on <i>Find Photos</i></b> — one of the <b>Set Variable</b> steps points at <b>Item from List</b> rather than at <b>Dates</b>, so the filter is being handed plain text. Tap the variable it names, choose <b>Clear Variable</b>, then pick <b>Dates</b>. Only <b>Get Dates from Input</b> turns the text this page sends into a date, so every date the shortcut uses has to come from one.',
     '<b>A name shows in red</b> — nothing above that action sets it. Either its <b>Set Variable</b> step is missing, or the action using it sits above the step that sets it. <b>Start</b> and <b>End</b> must both be set before <b>Find Photos</b>, and no step may use <b>End</b> before the one that sets it.',
@@ -3962,6 +3964,7 @@ const PhotoLinks = {
         <label>Preview — ${h(sample.title)}</label>
         <div class="redirect-uri-box" id="pl-preview" style="word-break:break-all;font-size:12px"></div>
         <p class="hint" id="pl-receives"></p>
+        <p class="hint" id="pl-needs"></p>
         <p class="hint" id="pl-note"></p>
         <p class="hint"><a id="pl-test" href="#" style="color:var(--blue);text-decoration:underline">Test this link</a></p>
       </div>`;
@@ -4024,6 +4027,12 @@ const PhotoLinks = {
     // to read — easier to check at a glance than picking it out of the URL.
     const sent = /^shortcuts:/i.test(url) && decodeURIComponent(url.split('&text=').pop() || '');
     $('#pl-receives').textContent = sent ? `The shortcut receives: ${sent}` : '';
+    // The two shortcut shapes read their input differently, and a mismatch
+    // shows up only as a conversion error inside Shortcuts.
+    $('#pl-needs').textContent = !sent ? ''
+      : $('#pl-shortcut-date')?.value === this.DAYS_MODE
+        ? 'So the shortcut needs the Adjust Date steps — “Subtract Item from List days from Current Date”.'
+        : 'So the shortcut needs the Get Dates from Input steps — “Get dates from Item from List”.';
     $('#pl-note').textContent = preset === 'apple' && !this.onAppleDevice()
       ? 'This browser can’t run shortcuts, so here the links open iCloud.com. On your iPhone, iPad or Mac they run the shortcut.'
       : '';
