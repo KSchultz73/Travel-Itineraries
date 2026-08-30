@@ -3639,7 +3639,11 @@ const PhotoLinks = {
   // while a hyphenated 2020-03-05 is the form most widely reported to work.
   // Rather than guess on someone's behalf, offer the alternatives — every one
   // of them is free of commas, since a comma separates the two dates.
-  SHORTCUT_DATES: ['YYYY-MM-DD', 'M/D/YYYY', 'MM/DD/YYYY', 'D MMMM YYYY', 'MMMM D YYYY'],
+  // The forms carrying a midnight time are the ones people have reported the
+  // parser accepting when a bare date defeats it. No AM/PM in these: _fmt
+  // substitutes any stray M or D, which would turn "AM" into "A6".
+  SHORTCUT_DATES: ['YYYY-MM-DD', 'YYYY-MM-DD 00:00:00', 'M/D/YYYY', 'M/D/YYYY 00:00:00',
+                   'MM/DD/YYYY', 'D MMMM YYYY', 'MMMM D YYYY'],
   DEFAULT_SHORTCUT_DATE: 'YYYY-MM-DD',
   shortcutDate() {
     const p = localStorage.getItem('photo_link_shortcut_date');
@@ -3811,7 +3815,8 @@ const PhotoLinks = {
     '<b>Blank even when launched from a 📷 link</b> — then the shortcut is not set up to accept input. Tap the <b>ⓘ</b> at the bottom of the editor and switch on <b>Show in Share Sheet</b>, which adds the “Receive <b>Any</b> input from <b>Share Sheet</b>” action at the top. Without it there is nothing to receive the text, so <b>Shortcut Input</b> is empty no matter how the shortcut is started.',
     '<b>Blank is the clue, not the error</b> — when <b>Get Dates from Input</b> is handed text it cannot read, it does not come back empty: it returns <i>today’s</i> date. So blank dates mean no text arrived at all, while today’s date in the alert means the text did arrive and was not recognised. The two point at completely different causes, so it is worth reading the alert carefully.',
     '<b>Which of the two it is</b> — while the shortcut runs after being started from this page, the status bar shows a <b>‹ Travel Itineraries</b> back link in the top-left corner. No back link there means it was started from inside Shortcuts and had no input. To settle it, put <b>Shortcut Input</b> into the alert message as well: blank means nothing was passed in, while “June 1 2026,June 13 2026” alongside blank dates means the text did arrive and was not recognised as a date.',
-    '<b>The alert shows the text but <i>Start</i> and <i>End</i> are still blank</b> — the dates are arriving and <b>Get Dates from Input</b> cannot read them. It reports nothing when that happens, which is why there is no error to go on. Change <b>Date Format Sent</b> above and run it again: “March 5 2020” is read as no date at all on some versions, while the hyphenated “2020-03-05” is the form most widely reported to work. Every format offered is comma-free, so the shortcut itself needs no changes.',
+    '<b>The alert shows the text but <i>Start</i> and <i>End</i> are still blank</b> — the dates are arriving and <b>Get Dates from Input</b> cannot read them. It reports nothing when that happens, which is why there is no error to go on. Change <b>Date Format Sent</b> above and run it again — the forms ending in 00:00:00 are the ones reported to work where a bare date does not. Every format offered is comma-free, so the shortcut itself needs no changes.',
+    '<b>No format works at all</b> — add <b>Dates</b> to the alert message, beside <b>Start</b> and <b>End</b>. If <b>Dates</b> is blank too, <b>Get Dates from Input</b> is reading nothing from perfectly good text, which is a known fault in some releases and no format will get round it. If <b>Dates</b> shows a date while <b>Start</b> stays blank, the fault is the <b>Set Variable</b> step instead, and it needs pointing at <b>Dates</b> again.',
     '<b>That alert shows the same date twice</b> — the second <b>Get Dates from Input</b> is reading the first <b>Item from List</b> rather than the last, so the range has no width and nothing can fall inside it. Tap <b>Item from List</b> in that step, choose <b>Clear Variable</b>, and pick the <b>Item from List</b> listed last.',
     '<b>The alert shows the trip’s first day and the day after its last</b> — then the dates are right and the search is at fault. Check that <b>Find Photos</b> names no variable of its own (“Find <b>Photos</b> where…”, never “Filter <b>End</b> where…”), that the filters read <b>is after</b> <b>Start</b> and <b>is before</b> <b>End</b> and not the other way round, that <b>All</b> is selected rather than <b>Any</b>, and that <b>Limit</b> is off. If all of that is right, this device simply holds no photos from those days — worth testing on a trip you know you photographed on this phone.',
   ],
