@@ -3634,15 +3634,25 @@ const PhotoLinks = {
   // variables empty instead of failing outright. A written-out month is what
   // it reads most dependably. The format holds no comma of its own, because a
   // comma is what separates the two dates.
-  SHORTCUT_DATE: 'MMMM D YYYY',
+  // Which of these Get Dates from Input actually reads is not documented and
+  // is not consistent: "March 5 2020" is read as no date at all on iOS 26,
+  // while a hyphenated 2020-03-05 is the form most widely reported to work.
+  // Rather than guess on someone's behalf, offer the alternatives — every one
+  // of them is free of commas, since a comma separates the two dates.
+  SHORTCUT_DATES: ['YYYY-MM-DD', 'M/D/YYYY', 'MM/DD/YYYY', 'D MMMM YYYY', 'MMMM D YYYY'],
+  DEFAULT_SHORTCUT_DATE: 'YYYY-MM-DD',
+  shortcutDate() {
+    const p = localStorage.getItem('photo_link_shortcut_date');
+    return this.SHORTCUT_DATES.includes(p) ? p : this.DEFAULT_SHORTCUT_DATE;
+  },
 
   // Sending the day after the trip ends, rather than the end date, means the
   // shortcut needs no date arithmetic of its own — the Adjust Date action it
   // used to need was the step people wired up wrong most often.
-  shortcutUrl(name) {
-    const dates = `{start:${this.SHORTCUT_DATE}},{next:${this.SHORTCUT_DATE}}`;
+  shortcutUrl(name, datePattern) {
+    const f = datePattern || this.shortcutDate();
     return `shortcuts://run-shortcut?name=${encodeURIComponent(name || this.DEFAULT_SHORTCUT)}`
-         + `&input=text&text=${dates}`;
+         + `&input=text&text={start:${f}},{next:${f}}`;
   },
 
   template(preset, opts = {}) {
@@ -3652,19 +3662,22 @@ const PhotoLinks = {
     if (p === 'apple') {
       // A Windows or Android browser can't run the shortcut, so fall back to
       // the plain iCloud library rather than a link that does nothing.
-      return this.onAppleDevice() ? this.shortcutUrl(opts.shortcut ?? this.shortcutName())
+      return this.onAppleDevice() ? this.shortcutUrl(opts.shortcut ?? this.shortcutName(), opts.shortcutDate)
                                   : this.PRESETS.icloud.url;
     }
     return this.PRESETS[p]?.url || '';
   },
 
-  save(preset, { custom = '', shortcut = '', buffer = 0 } = {}) {
+  save(preset, { custom = '', shortcut = '', buffer = 0, shortcutDate = '' } = {}) {
     localStorage.setItem('photo_link_preset', preset);
     localStorage.setItem('photo_link_buffer', String(buffer || 0));
     if (custom) localStorage.setItem('photo_link_custom', custom);
     else localStorage.removeItem('photo_link_custom');
     if (shortcut && shortcut !== this.DEFAULT_SHORTCUT) localStorage.setItem('photo_link_shortcut', shortcut);
     else localStorage.removeItem('photo_link_shortcut');
+    if (this.SHORTCUT_DATES.includes(shortcutDate) && shortcutDate !== this.DEFAULT_SHORTCUT_DATE)
+      localStorage.setItem('photo_link_shortcut_date', shortcutDate);
+    else localStorage.removeItem('photo_link_shortcut_date');
   },
 
   _shift(iso, days) {
@@ -3754,7 +3767,7 @@ const PhotoLinks = {
   SHORTCUT_STEPS: [
     'Open the <b>Shortcuts</b> app and tap <b>+</b>, then rename the shortcut to exactly the name above.',
     'Let it accept input, or the dates from this page have nowhere to land. Still in the <b>Shortcuts</b> app, tap the <b>ⓘ</b> at the bottom of the shortcut editor — the circled i in the row that holds the undo arrows and the ▶, immediately left of the share arrow; in some versions the same settings sit behind the <b>˅</b> beside the shortcut’s name at the top — and switch on <b>Show in Share Sheet</b> (some versions word it <b>Use with Share Sheet</b>). An action appears at the very top reading “Receive <b>Any</b> input from <b>Share Sheet</b>”; leave the type as <b>Any</b>, or make sure <b>Text</b> is among the types, and leave <b>If there’s no input</b> set to <b>Continue</b>. A shortcut built from <b>+</b> and never enabled this way accepts nothing, so <b>Shortcut Input</b> stays empty however the shortcut is started.',
-    'Add <b>Split Text</b> — the action reads “Split <b>Shortcut Input</b> by <b>New Lines</b>”. Tap <b>New Lines</b>, choose <b>Custom</b>, then type a single comma into the box that appears beside it. This page sends the two dates as “June 1 2026,June 12 2026” — a comma between them and none inside either one.',
+    'Add <b>Split Text</b> — the action reads “Split <b>Shortcut Input</b> by <b>New Lines</b>”. Tap <b>New Lines</b>, choose <b>Custom</b>, then type a single comma into the box that appears beside it. This page sends the two dates as “2026-06-01,2026-06-13” — a comma between them and none inside either one, whichever date format is chosen above.',
     'Add <b>Get Item from List</b> — it reads “Get <b>First Item</b> from <b>Split Text</b>”, which is already the first date.',
     'Add <b>Get Dates from Input</b>. It should read “Get dates from <b>Item from List</b>”. The dates arrive from this page as plain text and the photo filter will not read text as a date, so this is the step that turns one into the other — its output is called <b>Dates</b>.',
     'Add <b>Set Variable</b> and name it <b>Start</b>. Whatever it already points at, tap that and choose <b>Clear Variable</b>, then pick <b>Dates</b>, so the row reads “Set variable <b>Start</b> to <b>Dates</b>”. If it points at <b>Item from List</b> instead, the variable holds text again and the shortcut will stop with “couldn’t convert from Text to Date”.',
@@ -3798,7 +3811,7 @@ const PhotoLinks = {
     '<b>Blank even when launched from a 📷 link</b> — then the shortcut is not set up to accept input. Tap the <b>ⓘ</b> at the bottom of the editor and switch on <b>Show in Share Sheet</b>, which adds the “Receive <b>Any</b> input from <b>Share Sheet</b>” action at the top. Without it there is nothing to receive the text, so <b>Shortcut Input</b> is empty no matter how the shortcut is started.',
     '<b>Blank is the clue, not the error</b> — when <b>Get Dates from Input</b> is handed text it cannot read, it does not come back empty: it returns <i>today’s</i> date. So blank dates mean no text arrived at all, while today’s date in the alert means the text did arrive and was not recognised. The two point at completely different causes, so it is worth reading the alert carefully.',
     '<b>Which of the two it is</b> — while the shortcut runs after being started from this page, the status bar shows a <b>‹ Travel Itineraries</b> back link in the top-left corner. No back link there means it was started from inside Shortcuts and had no input. To settle it, put <b>Shortcut Input</b> into the alert message as well: blank means nothing was passed in, while “June 1 2026,June 13 2026” alongside blank dates means the text did arrive and was not recognised as a date.',
-    '<b>Still blank when launched from the 📷 link</b> — reload this page on the device first. Earlier versions sent dates as 2026-06-01, and <b>Get Dates from Input</b> often finds no date at all in that form, which leaves the variables empty rather than raising an error. The current link sends them written out, as “June 1 2026”.',
+    '<b>The alert shows the text but <i>Start</i> and <i>End</i> are still blank</b> — the dates are arriving and <b>Get Dates from Input</b> cannot read them. It reports nothing when that happens, which is why there is no error to go on. Change <b>Date Format Sent</b> above and run it again: “March 5 2020” is read as no date at all on some versions, while the hyphenated “2020-03-05” is the form most widely reported to work. Every format offered is comma-free, so the shortcut itself needs no changes.',
     '<b>That alert shows the same date twice</b> — the second <b>Get Dates from Input</b> is reading the first <b>Item from List</b> rather than the last, so the range has no width and nothing can fall inside it. Tap <b>Item from List</b> in that step, choose <b>Clear Variable</b>, and pick the <b>Item from List</b> listed last.',
     '<b>The alert shows the trip’s first day and the day after its last</b> — then the dates are right and the search is at fault. Check that <b>Find Photos</b> names no variable of its own (“Find <b>Photos</b> where…”, never “Filter <b>End</b> where…”), that the filters read <b>is after</b> <b>Start</b> and <b>is before</b> <b>End</b> and not the other way round, that <b>All</b> is selected rather than <b>Any</b>, and that <b>Limit</b> is off. If all of that is right, this device simply holds no photos from those days — worth testing on a trip you know you photographed on this phone.',
   ],
@@ -3828,6 +3841,18 @@ const PhotoLinks = {
         <p class="hint">
           Must match the shortcut on your iPhone exactly, capitals and all. The link hands it the
           start date and the day after the end date, separated by a comma.
+        </p>
+        <label style="margin-top:12px">Date Format Sent</label>
+        <select id="pl-shortcut-date" onchange="PhotoLinks._preview()">
+          ${this.SHORTCUT_DATES.map(p =>
+            `<option value="${h(p)}" ${p === this.shortcutDate() ? 'selected' : ''}
+              >${h(this._fmt('2026-06-01', p))}</option>`).join('')}
+        </select>
+        <p class="hint">
+          Shortcuts is picky about which written dates it recognises, and it gives no error when it
+          fails to read one — <b>Get Dates from Input</b> simply returns nothing and the shortcut
+          finds no photos. If that happens, try another format here; none of them contain a comma,
+          so the shortcut needs no changes either way.
         </p>
         <details class="pl-steps">
           <summary>One-time setup on your iPhone (about five minutes)</summary>
@@ -3866,6 +3891,7 @@ const PhotoLinks = {
       <div class="form-group">
         <label>Preview — ${h(sample.title)}</label>
         <div class="redirect-uri-box" id="pl-preview" style="word-break:break-all;font-size:12px"></div>
+        <p class="hint" id="pl-receives"></p>
         <p class="hint" id="pl-note"></p>
         <p class="hint"><a id="pl-test" href="#" style="color:var(--blue);text-decoration:underline">Test this link</a></p>
       </div>`;
@@ -3881,9 +3907,10 @@ const PhotoLinks = {
         return;
       }
       this.save(p, {
-        custom:   p === 'custom' ? u : '',
-        shortcut: $('#pl-shortcut').value.trim(),
-        buffer:   $('#pl-buffer').value,
+        custom:       p === 'custom' ? u : '',
+        shortcut:     $('#pl-shortcut').value.trim(),
+        buffer:       $('#pl-buffer').value,
+        shortcutDate: $('#pl-shortcut-date').value,
       });
       Modal.hide();
       App.render();
@@ -3909,7 +3936,11 @@ const PhotoLinks = {
     const box = $('#pl-preview'), test = $('#pl-test');
     if (!box) return;
     const preset = $('#pl-preset').value;
-    const tpl  = this.template(preset, { custom: $('#pl-url').value.trim(), shortcut: $('#pl-shortcut').value.trim() });
+    const tpl  = this.template(preset, {
+      custom: $('#pl-url').value.trim(),
+      shortcut: $('#pl-shortcut').value.trim(),
+      shortcutDate: $('#pl-shortcut-date')?.value,
+    });
     const pad  = Number($('#pl-buffer').value || 0);
     const itin = this._sample;
     const start = itin.startDate || itin.endDate, end = itin.endDate || itin.startDate;
@@ -3919,6 +3950,10 @@ const PhotoLinks = {
     test.style.display = url ? '' : 'none';
     test.href = url || '#';
     test.target = /^https?:/i.test(url) ? '_blank' : '';
+    // The text the shortcut is handed, which is what Get Dates from Input has
+    // to read — easier to check at a glance than picking it out of the URL.
+    const sent = /^shortcuts:/i.test(url) && decodeURIComponent(url.split('&text=').pop() || '');
+    $('#pl-receives').textContent = sent ? `The shortcut receives: ${sent}` : '';
     $('#pl-note').textContent = preset === 'apple' && !this.onAppleDevice()
       ? 'This browser can’t run shortcuts, so here the links open iCloud.com. On your iPhone, iPad or Mac they run the shortcut.'
       : '';
