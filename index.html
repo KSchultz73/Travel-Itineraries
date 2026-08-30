@@ -3813,7 +3813,7 @@ const PhotoLinks = {
     'Add <b>Quick Look</b> at the very end, then tap Done.',
     'Test it by tapping a trip’s 📷 link on this page — never by tapping <b>Trip Photos</b> in the Shortcuts app or the ▶ button in its editor. Started from inside Shortcuts it receives no input at all, so it has no dates to work with and finds nothing, however well it is built. That is the single most common reason this appears not to work.',
   ],
-  SHORTCUT_TIP: 'Everything shown in blue in the Shortcuts app is a menu — tap it to change it. A few of them, dates especially, open a picker on a tap and only offer <b>Select Variable</b> when you touch and hold instead. A name shown in <i>red</i> is a variable nothing above it sets, so that action has no value to work with.',
+  SHORTCUT_TIP: 'A new action is always added at the bottom of the list, never where you are looking — to place one in the middle, add it at the end, then touch and hold it and drag it up into position. Building in the order below therefore needs no dragging at all. Everything shown in blue in the Shortcuts app is a menu — tap it to change it. A few of them, dates especially, open a picker on a tap and only offer <b>Select Variable</b> when you touch and hold instead. A name shown in <i>red</i> is a variable nothing above it sets, so that action has no value to work with.',
 
   // Every action names whatever sits above it at the moment you add it, so the
   // finished list is easier to check against than the steps that built it.
@@ -3835,7 +3835,7 @@ const PhotoLinks = {
   // number is the one conversion Shortcuts is reliable about.
   SHORTCUT_DAYS_STEPS: [
     'Set <b>Date Format Sent</b> above to <b>Days ago, not dates</b>. The link now carries two plain numbers, such as “2354,2334”.',
-    'In the shortcut, delete both <b>Get dates from Item from List</b> steps. Everything else stays: <b>Split Text</b>, both <b>Get Item from List</b> steps, <b>Find Photos</b> and <b>Quick Look</b> are all unchanged.',
+    'In the shortcut, delete both <b>Get dates from Item from List</b> steps. Everything else stays: <b>Split Text</b>, both <b>Get Item from List</b> steps, <b>Find Photos</b> and <b>Quick Look</b> are all unchanged. The two replacements have to be added at the bottom and dragged up into place, which is two drags — or delete the lot and build the nine actions below in order, which needs no dragging but means setting up the <b>Find Photos</b> filters again.',
     'Where the first one was — directly under “Get <b>First Item</b> from <b>Split Text</b>” — add <b>Adjust Date</b>. It arrives reading “Add <b>1</b> <b>day</b> to <b>Item from List</b>”.',
     'Tap <b>Add</b> and change it to <b>Subtract</b>. Tap the <b>1</b>, clear it, and put the <b>Item from List</b> variable there instead, so the number of days comes from the link.',
     'Tap the date at the end of that row, choose <b>Clear Variable</b>, and pick <b>Current Date</b> from the variable list. The row should now read “Subtract <b>Item from List</b> <b>days</b> from <b>Current Date</b>”.',
