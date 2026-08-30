@@ -3642,12 +3642,20 @@ const PhotoLinks = {
   // The forms carrying a midnight time are the ones people have reported the
   // parser accepting when a bare date defeats it. No AM/PM in these: _fmt
   // substitutes any stray M or D, which would turn "AM" into "A6".
+  // DAYS_MODE sends two day counts rather than two dates, for the versions of
+  // Shortcuts where Get Dates from Input reads nothing out of any written date
+  // at all. It needs the alternative actions in SHORTCUT_DAYS_STEPS.
+  DAYS_MODE: 'daysago',
   SHORTCUT_DATES: ['YYYY-MM-DD', 'YYYY-MM-DD 00:00:00', 'M/D/YYYY', 'M/D/YYYY 00:00:00',
-                   'MM/DD/YYYY', 'D MMMM YYYY', 'MMMM D YYYY'],
+                   'MM/DD/YYYY', 'D MMMM YYYY', 'MMMM D YYYY', 'daysago'],
   DEFAULT_SHORTCUT_DATE: 'YYYY-MM-DD',
   shortcutDate() {
     const p = localStorage.getItem('photo_link_shortcut_date');
     return this.SHORTCUT_DATES.includes(p) ? p : this.DEFAULT_SHORTCUT_DATE;
+  },
+  sentLabel(p) {
+    return p === this.DAYS_MODE ? 'Days ago, not dates — 2354,2334 (needs the Adjust Date steps)'
+                                : this._fmt('2026-06-01', p);
   },
 
   // Sending the day after the trip ends, rather than the end date, means the
@@ -3655,8 +3663,9 @@ const PhotoLinks = {
   // used to need was the step people wired up wrong most often.
   shortcutUrl(name, datePattern) {
     const f = datePattern || this.shortcutDate();
+    const sent = f === this.DAYS_MODE ? '{startdays},{nextdays}' : `{start:${f}},{next:${f}}`;
     return `shortcuts://run-shortcut?name=${encodeURIComponent(name || this.DEFAULT_SHORTCUT)}`
-         + `&input=text&text={start:${f}},{next:${f}}`;
+         + `&input=text&text=${sent}`;
   },
 
   template(preset, opts = {}) {
@@ -3705,11 +3714,27 @@ const PhotoLinks = {
     return (pattern || 'YYYY-MM-DD').replace(/YYYY|YY|MMMM|MMM|MM|M|DD|D/g, t => token[t]);
   },
 
+  _daysAgo(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const now = new Date();
+    const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((today - Date.UTC(y, m - 1, d)) / 86400000);
+  },
+
   // "next" is the day after the trip ends, for services — and shortcuts —
   // whose end of range is exclusive.
   _range(start, end, pad) {
-    const last = this._shift(end, pad);
-    return { start: this._shift(start, -pad), end: last, next: this._shift(last, 1) };
+    const first = this._shift(start, -pad);
+    const last  = this._shift(end, pad);
+    const next  = this._shift(last, 1);
+    // Day counts back from today, for a shortcut that would rather subtract
+    // days from Current Date than read a date out of text. Current Date
+    // carries the clock too, so a date reached this way lands at whatever time
+    // the link was tapped — hence the extra day on the near side, which keeps
+    // the whole of the first day inside the range whenever it is run.
+    return { start: first, end: last, next,
+             startdays: this._daysAgo(first) + 1,
+             nextdays:  Math.max(0, this._daysAgo(next)) };
   },
 
   // A one-day trip, or one with only a start date, still gets a usable range.
@@ -3721,9 +3746,12 @@ const PhotoLinks = {
   },
 
   fill(template, range, title) {
-    return template.replace(/\{(start|end|next|title)(?::([^}]+))?\}/g, (_, key, pattern) =>
-      key === 'title' ? encodeURIComponent(title || '')
-                      : encodeURIComponent(this._fmt(range[key], pattern)));
+    return template.replace(/\{(start|end|next|startdays|nextdays|title)(?::([^}]+))?\}/g,
+      (_, key, pattern) => {
+        if (key === 'title') return encodeURIComponent(title || '');
+        if (key.endsWith('days')) return String(range[key]);
+        return encodeURIComponent(this._fmt(range[key], pattern));
+      });
   },
 
   // A trip that has not started yet can only ever match nothing, and a link
@@ -3801,6 +3829,32 @@ const PhotoLinks = {
     'Show <b>Photos</b> in Quick Look',
   ],
 
+  // For the versions where Get Dates from Input reads nothing out of any
+  // written date. Subtracting a number of days from Current Date never touches
+  // the date reader: Current Date is already a date, and turning "2354" into a
+  // number is the one conversion Shortcuts is reliable about.
+  SHORTCUT_DAYS_STEPS: [
+    'Set <b>Date Format Sent</b> above to <b>Days ago, not dates</b>. The link now carries two plain numbers, such as “2354,2334”.',
+    'In the shortcut, delete both <b>Get dates from Item from List</b> steps. Everything else stays: <b>Split Text</b>, both <b>Get Item from List</b> steps, <b>Find Photos</b> and <b>Quick Look</b> are all unchanged.',
+    'Where the first one was — directly under “Get <b>First Item</b> from <b>Split Text</b>” — add <b>Adjust Date</b>. It arrives reading “Add <b>1</b> <b>day</b> to <b>Item from List</b>”.',
+    'Tap <b>Add</b> and change it to <b>Subtract</b>. Tap the <b>1</b>, clear it, and put the <b>Item from List</b> variable there instead, so the number of days comes from the link.',
+    'Tap the date at the end of that row, choose <b>Clear Variable</b>, and pick <b>Current Date</b> from the variable list. The row should now read “Subtract <b>Item from List</b> <b>days</b> from <b>Current Date</b>”.',
+    'Point the <b>Set Variable</b> below it at <b>Adjusted Date</b> — tap whatever it names, choose <b>Clear Variable</b>, then pick <b>Adjusted Date</b>. It should read “Set variable <b>Start</b> to <b>Adjusted Date</b>”.',
+    'Do the same again under “Get <b>Last Item</b> from <b>Split Text</b>” for <b>End</b>: <b>Adjust Date</b> subtracting <b>Item from List</b> days from <b>Current Date</b>, then “Set variable <b>End</b> to <b>Adjusted Date</b>”.',
+  ],
+  SHORTCUT_FINAL_DAYS: [
+    'Split <b>Shortcut Input</b> by <b>Custom</b> <b>,</b>',
+    'Get <b>First Item</b> from <b>Split Text</b>',
+    'Subtract <b>Item from List</b> <b>days</b> from <b>Current Date</b>',
+    'Set variable <b>Start</b> to <b>Adjusted Date</b>',
+    'Get <b>Last Item</b> from <b>Split Text</b>',
+    'Subtract <b>Item from List</b> <b>days</b> from <b>Current Date</b>',
+    'Set variable <b>End</b> to <b>Adjusted Date</b>',
+    'Find <b>Photos</b> where <b>All</b> of the following are true — <b>Date Taken</b> <b>is after</b> <b>Start</b>, <b>Date Taken</b> <b>is before</b> <b>End</b>, with <b>Limit</b> off',
+    'Show <b>Photos</b> in Quick Look',
+  ],
+  SHORTCUT_DAYS_NOTE: 'Because <b>Current Date</b> carries the time of day as well as the date, a range built this way sits at whatever time you tapped the link, so it can take in a few hours either side of the trip. The day counts sent allow for that, so the whole of the first and last day is always covered.',
+
   // Each of these is a mistake the shortcut can't tell you about plainly, so
   // they are matched to what you actually see on screen when it happens.
   SHORTCUT_FIXES: [
@@ -3816,7 +3870,7 @@ const PhotoLinks = {
     '<b>Blank is the clue, not the error</b> — when <b>Get Dates from Input</b> is handed text it cannot read, it does not come back empty: it returns <i>today’s</i> date. So blank dates mean no text arrived at all, while today’s date in the alert means the text did arrive and was not recognised. The two point at completely different causes, so it is worth reading the alert carefully.',
     '<b>Which of the two it is</b> — while the shortcut runs after being started from this page, the status bar shows a <b>‹ Travel Itineraries</b> back link in the top-left corner. No back link there means it was started from inside Shortcuts and had no input. To settle it, put <b>Shortcut Input</b> into the alert message as well: blank means nothing was passed in, while “June 1 2026,June 13 2026” alongside blank dates means the text did arrive and was not recognised as a date.',
     '<b>The alert shows the text but <i>Start</i> and <i>End</i> are still blank</b> — the dates are arriving and <b>Get Dates from Input</b> cannot read them. It reports nothing when that happens, which is why there is no error to go on. Change <b>Date Format Sent</b> above and run it again — the forms ending in 00:00:00 are the ones reported to work where a bare date does not. Every format offered is comma-free, so the shortcut itself needs no changes.',
-    '<b>No format works at all</b> — add <b>Dates</b> to the alert message, beside <b>Start</b> and <b>End</b>. If <b>Dates</b> is blank too, <b>Get Dates from Input</b> is reading nothing from perfectly good text, which is a known fault in some releases and no format will get round it. If <b>Dates</b> shows a date while <b>Start</b> stays blank, the fault is the <b>Set Variable</b> step instead, and it needs pointing at <b>Dates</b> again.',
+    '<b>No format works at all</b> — add <b>Dates</b> to the alert message, beside <b>Start</b> and <b>End</b>. If <b>Dates</b> shows a date while <b>Start</b> stays blank, the fault is the <b>Set Variable</b> step and it needs pointing at <b>Dates</b> again. If <b>Dates</b> is blank too, then <b>Get Dates from Input</b> is reading nothing out of perfectly good text — a known fault in some releases that no format gets round. Use the day-count version below instead; it never asks Shortcuts to read a date at all.',
     '<b>That alert shows the same date twice</b> — the second <b>Get Dates from Input</b> is reading the first <b>Item from List</b> rather than the last, so the range has no width and nothing can fall inside it. Tap <b>Item from List</b> in that step, choose <b>Clear Variable</b>, and pick the <b>Item from List</b> listed last.',
     '<b>The alert shows the trip’s first day and the day after its last</b> — then the dates are right and the search is at fault. Check that <b>Find Photos</b> names no variable of its own (“Find <b>Photos</b> where…”, never “Filter <b>End</b> where…”), that the filters read <b>is after</b> <b>Start</b> and <b>is before</b> <b>End</b> and not the other way round, that <b>All</b> is selected rather than <b>Any</b>, and that <b>Limit</b> is off. If all of that is right, this device simply holds no photos from those days — worth testing on a trip you know you photographed on this phone.',
   ],
@@ -3851,13 +3905,14 @@ const PhotoLinks = {
         <select id="pl-shortcut-date" onchange="PhotoLinks._preview()">
           ${this.SHORTCUT_DATES.map(p =>
             `<option value="${h(p)}" ${p === this.shortcutDate() ? 'selected' : ''}
-              >${h(this._fmt('2026-06-01', p))}</option>`).join('')}
+              >${h(this.sentLabel(p))}</option>`).join('')}
         </select>
         <p class="hint">
           Shortcuts is picky about which written dates it recognises, and it gives no error when it
           fails to read one — <b>Get Dates from Input</b> simply returns nothing and the shortcut
-          finds no photos. If that happens, try another format here; none of them contain a comma,
-          so the shortcut needs no changes either way.
+          finds no photos. If that happens, try another format here; every date format is free of
+          commas, so the shortcut needs no changes to move between them. Where no date at all can
+          be read, the last option sends day counts instead and needs the alternative steps below.
         </p>
         <details class="pl-steps">
           <summary>One-time setup on your iPhone (about five minutes)</summary>
@@ -3867,6 +3922,16 @@ const PhotoLinks = {
           <ol>${this.SHORTCUT_FINAL.map(s => `<li>${s}</li>`).join('')}</ol>
           <p>If it stops with an error, this is almost always why:</p>
           <ul>${this.SHORTCUT_FIXES.map(s => `<li>${s}</li>`).join('')}</ul>
+          <p><b>If no date format works — the day-count version</b></p>
+          <p>
+            Some releases of Shortcuts read no date at all out of any written form, with no error to
+            show for it. This version never asks them to: it subtracts a number of days from
+            <b>Current Date</b> instead, which is already a date.
+          </p>
+          <ol>${this.SHORTCUT_DAYS_STEPS.map(s => `<li>${s}</li>`).join('')}</ol>
+          <p>The actions should then read:</p>
+          <ol>${this.SHORTCUT_FINAL_DAYS.map(s => `<li>${s}</li>`).join('')}</ol>
+          <p>${this.SHORTCUT_DAYS_NOTE}</p>
           <p>
             The shortcut syncs to your iPad and Mac through iCloud, so the 📷 links work there too.
             Nothing leaves your device and no photos are copied anywhere — it reads the library in place.
