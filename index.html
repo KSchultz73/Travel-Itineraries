@@ -263,6 +263,18 @@
     .pl-steps li { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin-bottom: 7px; }
     .pl-steps li b { color: var(--text); font-weight: 600; }
     .pl-steps p { font-size: 12px; color: var(--muted); line-height: 1.6; margin-top: 10px; }
+    /* What the shortcut was handed, said out loud at the moment of the tap —
+       the mismatch it reports is otherwise invisible from inside Shortcuts. */
+    .pl-toast {
+      position: fixed; left: 12px; right: 12px; bottom: 16px; z-index: 4000;
+      margin: 0 auto; max-width: 460px; padding: 11px 14px; border-radius: 12px;
+      background: #1f2937; color: #f9fafb; font-size: 12.5px; line-height: 1.5;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35); cursor: pointer;
+    }
+    .pl-toast code {
+      background: rgba(255,255,255,.14); border-radius: 4px;
+      padding: 1px 5px; font-size: 12px;
+    }
 
     /* ── Trip List ─────────────────────────────────────── */
     .search-bar {
@@ -3818,10 +3830,39 @@ const PhotoLinks = {
     navigator.clipboard?.writeText(text).catch(() => {});
   },
 
+  // Which shape of shortcut the payload calls for. A shortcut built for one
+  // and fed the other fails inside Shortcuts, which can only say that it could
+  // not convert what it was given — never what it was given, or by whom.
+  DAYS_PAYLOAD: /^\d+,\d+$/,
+  sentKind(text) {
+    return this.DAYS_PAYLOAD.test(text)
+      ? 'day counts, so the shortcut must subtract them from Current Date'
+      : 'dates, so the shortcut must read them with Get Dates from Input';
+  },
+
+  // Said at the moment of the tap, and still on screen when you come back from
+  // Shortcuts, since leaving for another app doesn't reload the page.
+  _toast(text) {
+    let el = document.getElementById('pl-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'pl-toast';
+      el.className = 'pl-toast';
+      el.onclick = () => el.remove();
+      document.body.appendChild(el);
+    }
+    el.innerHTML = `Sent <code>${h(text)}</code> to <b>${h(this.shortcutName())}</b> —
+      ${h(this.sentKind(text))}. Copied too, for a shortcut that reads the Clipboard.`;
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => el.remove(), 15000);
+  },
+
   // Called from the link itself, on the tap that opens Shortcuts.
   arm(el) {
     const text = el?.dataset?.plText;
-    if (text) this._copy(text);
+    if (!text) return;
+    this._copy(text);
+    this._toast(text);
   },
 
   _armAttrs(url) {
@@ -3911,8 +3952,9 @@ const PhotoLinks = {
   // Each of these is a mistake the shortcut can't tell you about plainly, so
   // they are matched to what you actually see on screen when it happens.
   SHORTCUT_FIXES: [
-    '<b>“Adjust Date failed because Shortcuts couldn’t convert from Text to Number”</b> — something reached <b>Adjust Date</b> that is not a number, and it can only be one of three things: a date, if the link is still sending dates rather than day counts; text that holds a number but was handed over as text, which some versions refuse to read; or <i>nothing at all</i>, because empty is not a number either. That last one is the same fault as the blank dates further down wearing a different mask, and it is the likeliest of the three. The next item tells you which you have.',
-    '<b>Which of the three, in one tap</b> — the action to change is the one already at the very top of the shortcut, the first card above <b>Split Text</b>, and nothing needs adding to use it. It reads “Receive <i>something</i> from <b>Share Sheet</b>” — where <i>something</i> may say <b>Any</b>, or may list the types it takes, as in “Receive <b>Apps and 18 more</b> from <b>Share Sheet</b>”. Underneath, in grey, it says “If there’s no input:”, and on the line below that sits a blue <b>Continue</b>. Tap that <b>Continue</b> and change it to <b>Ask For</b>, then choose <b>Text</b>. Then start the shortcut from a trip’s 📷 link on this page. If a box appears asking you to type something, nothing was passed in and no step below it can work — that is the fault to chase, and the items about blank dates below are the ones to read. If no box appears, the text did arrive, so either the link is sending dates while the shortcut expects numbers (set <b>Date Format Sent</b> above to <b>Days ago, not dates</b> and press <b>Save</b>) or the number needs <b>Get Numbers from Input</b> ahead of <b>Adjust Date</b>, as in the day-count steps below. Either way, if the box does appear, type <b>10,0</b> into it: the shortcut should then show the last ten days of photos, which proves everything below the input is built correctly and only the input is missing. Set it back to <b>Continue</b> when you are done.',
+    '<b>“Adjust Date failed because Shortcuts couldn’t convert from Text to Number”</b> — something reached <b>Adjust Date</b> that is not a number, and it can only be one of three things: a date, if the link is sending dates rather than day counts; text that holds a number but was handed over as text, which some versions refuse to read; or <i>nothing at all</i>, because empty is not a number either. Tapping a 📷 link now says which was sent in a dark banner along the bottom of this page, and that banner is still there when you come back from Shortcuts — so read it first. A banner showing dates against a shortcut built to subtract days is the whole fault, and the fix is in this panel, not on your phone: set <b>Date Format Sent</b> above to <b>Days ago, not dates</b> and press <b>Save</b>.',
+    '<b>Proving the shortcut on its own</b> — with “If there’s no input” set to <b>Ask For</b> <b>Text</b>, tap the <b>▶</b> in the Shortcuts editor. Started from there it gets no input, so it must stop and ask; type <b>10,0</b> and tap Done. If the last ten days of photos appear, every action below the input is right and only what the page sends is wrong. If it still fails on <b>Adjust Date</b> having been handed a plain <b>10</b>, then that version really will not read a number out of text, and it needs <b>Get Numbers from Input</b> as in the day-count steps below. This separates the two halves of the problem completely, which no other test does.',
+    '<b>Which of the three, in one tap</b> — the action to change is the one already at the very top of the shortcut, the first card above <b>Split Text</b>, and nothing needs adding to use it. It reads “Receive <i>something</i> from <b>Share Sheet</b>” — where <i>something</i> may say <b>Any</b>, or may list the types it takes, as in “Receive <b>Apps and 18 more</b> from <b>Share Sheet</b>”. Underneath, in grey, it says “If there’s no input:”, and on the line below that sits a blue <b>Continue</b>. Tap that <b>Continue</b> and change it to <b>Ask For</b>, then choose <b>Text</b>. Then start the shortcut from a trip’s 📷 link on this page. Reaching the old error <i>without</i> being asked to type anything is itself an answer: text did arrive, and it was the wrong sort. If a box appears asking you to type something, nothing was passed in and no step below it can work — that is the fault to chase, and the items about blank dates below are the ones to read. If no box appears, the text did arrive, so either the link is sending dates while the shortcut expects numbers (set <b>Date Format Sent</b> above to <b>Days ago, not dates</b> and press <b>Save</b>) or the number needs <b>Get Numbers from Input</b> ahead of <b>Adjust Date</b>, as in the day-count steps below. Either way, if the box does appear, type <b>10,0</b> into it: the shortcut should then show the last ten days of photos, which proves everything below the input is built correctly and only the input is missing. Set it back to <b>Continue</b> when you are done.',
     '<b>The top action reads “Receive Apps and 18 more from Share Sheet”</b> — that is the same first card, naming the types it accepts rather than saying <b>Any</b>. Tap the blue words straight after <b>Receive</b> to open that list, and check that <b>Text</b> is ticked. Everything this page sends is text, and a type list with <b>Text</b> switched off throws it away without a word, which leaves <b>Shortcut Input</b> empty exactly as though the shortcut had been started from inside Shortcuts. <b>Select All</b> is the safe setting; nothing here is harmed by accepting types you never send.',
     '<b>“Shortcuts couldn’t convert from Text to Date” on <i>Adjust Date</i></b> — that step is left over from an earlier version of these instructions, and it cannot read text at all. Delete it and the <b>Set Variable</b> under it, then put <b>Get Dates from Input</b> and “Set variable <b>End</b> to <b>Dates</b>” in their place. This page sends the day after the trip ends, so nothing in the shortcut needs to add a day.',
     '<b>The same error on <i>Find Photos</i></b> — one of the <b>Set Variable</b> steps points at <b>Item from List</b> rather than at <b>Dates</b>, so the filter is being handed plain text. Tap the variable it names, choose <b>Clear Variable</b>, then pick <b>Dates</b>. Only <b>Get Dates from Input</b> turns the text this page sends into a date, so every date the shortcut uses has to come from one.',
@@ -3921,6 +3963,7 @@ const PhotoLinks = {
     '<b>“The Quick Look action wasn’t passed any items to preview”</b> — nothing is broken: the shortcut ran all the way through and the search matched no photos. To see what it searched for, add <b>Show Alert</b> just above <b>Find Photos</b>, tap its <b>Message</b> field, and put <b>Start</b> and <b>End</b> in by tapping them in the strip of variables just above the keyboard. An alert that appears with no text at all and only a Continue button is one whose message was left empty. Delete the alert once you know.',
     '<b>Easier than typing into an alert</b> — tap the ⊖ beside the <b>Date Taken</b> <b>is before</b> <b>End</b> filter to take it off and run the shortcut again. If photos appear now, <b>End</b> holds the wrong date; if nothing appears even with that filter gone, the fault is in <b>Start</b> or in <b>Find Photos</b> itself. Put the filter back afterwards.',
     '<b>The alert shows both dates blank</b> — the shortcut was handed no text to read. <i>Every</i> way of starting it from inside the Shortcuts app does this: the ▶ button in the editor, tapping its tile in the Library, Spotlight and Siri all pass no input, so <b>Shortcut Input</b> is empty and every step below it has nothing to work on. Only a trip’s 📷 link on this page supplies the dates.',
+    '<b>The banner shows dates when you chose day counts</b> — then <b>Date Format Sent</b> was saved somewhere that isn’t doing the sending. An icon on the Home Screen keeps its own settings, separate from Safari on the same phone, even though it is the same page: choosing day counts in Safari changes nothing about what the icon sends. Open Photo Links from whichever one you actually tap the 📷 links in, choose <b>Days ago, not dates</b> there, press <b>Save</b>, and check the banner again.',
     '<b>Kept as an icon on the Home Screen</b> — that works exactly as Safari does, and the 📷 links hand off to Shortcuts from it just the same. It has no address bar to reload from, though, so to be sure you are on the current version of this page, close it from the app switcher and open it again.',
     '<b>Blank even when launched from a 📷 link</b> — then the shortcut is not set up to accept input. Tap the <b>ⓘ</b> at the bottom of the editor and switch on <b>Show in Share Sheet</b>, which adds the “Receive <b>Any</b> input from <b>Share Sheet</b>” action at the top. Without it there is nothing to receive the text, so <b>Shortcut Input</b> is empty no matter how the shortcut is started.',
     '<b>Nothing arrives however the shortcut is set up</b> — the two values are put on the clipboard as well as into the link, every time you tap a 📷 link, and the shortcut can read them from there instead. In <b>Split Text</b>, tap <b>Shortcut Input</b>, choose <b>Clear Variable</b>, then pick <b>Clipboard</b> from the variable list, so the action reads “Split <b>Clipboard</b> by <b>Custom</b> <b>,</b>”. That is one tap, it needs no dragging, and it sidesteps receiving input altogether — the <b>Receive</b> action, <b>Show in Share Sheet</b> and the type list all stop mattering, and the shortcut then works even when started from inside Shortcuts, so long as a 📷 link was the last thing you tapped. iOS may ask once to allow the paste; tap <b>Allow</b>. The only cost is that tapping a 📷 link replaces whatever you had copied.',
@@ -3940,7 +3983,8 @@ const PhotoLinks = {
     const body = `
       <div class="alert alert-info" style="margin-bottom:16px">
         Each trip gets a 📷 link that opens your photo library filtered to the trip’s dates.
-        Settings are kept in this browser.
+        Settings are kept in this browser — and an icon on the Home Screen counts as a browser of
+        its own, with its own copy of them, so set these where you actually tap the links.
       </div>
       <div class="form-group">
         <label>Photo Library</label>
