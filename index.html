@@ -3683,7 +3683,7 @@ const PhotoLinks = {
     return this.SHORTCUT_DATES.includes(p) ? p : this.DEFAULT_SHORTCUT_DATE;
   },
   sentLabel(p) {
-    return p === this.DAYS_MODE ? 'Days ago, not dates — 2354,2334 (needs the Adjust Date steps)'
+    return p === this.DAYS_MODE ? 'Days ago, not dates — 2354 2334 (needs the Adjust Date steps)'
                                 : this._fmt('2026-06-01', p);
   },
 
@@ -3692,7 +3692,10 @@ const PhotoLinks = {
   // used to need was the step people wired up wrong most often.
   shortcutUrl(name, datePattern) {
     const f = datePattern || this.shortcutDate();
-    const sent = f === this.DAYS_MODE ? '{startdays},{nextdays}' : `{start:${f}},{next:${f}}`;
+    // A space between the day counts, not a comma: the shortcut picks the
+    // numbers out of the text itself, and a comma between digits is a thousands
+    // separator to anything that reads numbers.
+    const sent = f === this.DAYS_MODE ? '{startdays}%20{nextdays}' : `{start:${f}},{next:${f}}`;
     return `shortcuts://run-shortcut?name=${encodeURIComponent(name || this.DEFAULT_SHORTCUT)}`
          + `&input=text&text=${sent}`;
   },
@@ -3850,7 +3853,7 @@ const PhotoLinks = {
   // Which shape of shortcut the payload calls for. A shortcut built for one
   // and fed the other fails inside Shortcuts, which can only say that it could
   // not convert what it was given — never what it was given, or by whom.
-  DAYS_PAYLOAD: /^\d+,\d+$/,
+  DAYS_PAYLOAD: /^\d+[\s,]\d+$/,
   sentKind(text) {
     return this.DAYS_PAYLOAD.test(text)
       ? 'day counts, so the shortcut must subtract them from Current Date'
@@ -3942,24 +3945,22 @@ const PhotoLinks = {
   // the date reader: Current Date is already a date, and turning "2354" into a
   // number is the one conversion Shortcuts is reliable about.
   SHORTCUT_DAYS_STEPS: [
-    'Set <b>Date Format Sent</b> above to <b>Days ago, not dates</b>. The link now carries two plain numbers, such as “2354,2334”.',
-    'In the shortcut, delete both <b>Get dates from Item from List</b> steps. Everything else stays: <b>Split Text</b>, both <b>Get Item from List</b> steps, <b>Find Photos</b> and <b>Quick Look</b> are all unchanged. Their replacements have to be added at the bottom and dragged up into place, which is four drags — or delete every action and build the eleven below in order, which needs no dragging at all but means setting up the <b>Find Photos</b> filters again. With the filters already built, dragging is the shorter job.',
-    'Where the first one was — directly under “Get <b>First Item</b> from <b>Split Text</b>” — add <b>Get Numbers from Input</b>. Everything that comes out of <b>Split Text</b> is text, even when it reads “2354”, and some versions of <b>Adjust Date</b> will not read a number out of text themselves; this step does it for them. Its output is called <b>Numbers</b>.',
-    'Under that add <b>Adjust Date</b>. It arrives reading “Add <b>1</b> <b>day</b> to <b>Numbers</b>”.',
-    'Tap <b>Add</b> and change it to <b>Subtract</b>. Tap the <b>1</b>, clear it, and put the <b>Numbers</b> variable there instead, so the number of days comes from the link.',
-    'Tap the date at the end of that row, choose <b>Clear Variable</b>, and pick <b>Current Date</b> from the variable list. The row should now read “Subtract <b>Numbers</b> <b>days</b> from <b>Current Date</b>”.',
-    'Point the <b>Set Variable</b> below it at <b>Adjusted Date</b> — tap whatever it names, choose <b>Clear Variable</b>, then pick <b>Adjusted Date</b>. It should read “Set variable <b>Start</b> to <b>Adjusted Date</b>”.',
-    'Do the same again under “Get <b>Last Item</b> from <b>Split Text</b>” for <b>End</b>: <b>Get Numbers from Input</b>, then <b>Adjust Date</b> subtracting <b>Numbers</b> days from <b>Current Date</b>, then “Set variable <b>End</b> to <b>Adjusted Date</b>”. Where two steps share a name, the one listed last in the variable picker is the nearer one above.',
+    'Set <b>Date Format Sent</b> above to <b>Days ago, not dates</b> and press <b>Save</b>. The link then carries two plain numbers with a space between them, such as “2371 2348”, and the banner along the bottom of this page says so every time you tap a 📷 link.',
+    'Add <b>Get Numbers from Input</b>. It lands at the bottom of the list, so touch and hold it and drag it up until it sits at the very top, above <b>Split Text</b>. This is the only dragging in the job — everything after it is tapping.',
+    'Tap what it reads from, choose <b>Clear Variable</b>, and pick <b>Clipboard</b>. Tapping a 📷 link puts those same two numbers on the clipboard, so from here on nothing depends on the shortcut receiving input at all. Its output is called <b>Numbers</b>, and because it is a list of numbers rather than text, there is nothing left for <b>Adjust Date</b> to convert.',
+    'Delete <b>Split Text</b> with the <b>⊗</b> in its corner, along with both <b>Get dates from Item from List</b> steps if they are still there. Both <b>Get Item from List</b> steps will turn red where they named <b>Split Text</b>, which is expected.',
+    'Tap each red <b>Split Text</b> in turn and pick <b>Numbers</b> instead. Leave the first reading <b>First Item</b> and the second <b>Last Item</b>.',
+    'Check each <b>Adjust Date</b> row reads “Subtract <b>Item from List</b> <b>days</b> from <b>Current Date</b>”, and the <b>Set Variable</b> under each reads “to <b>Adjusted Date</b>”. If either <b>Adjust Date</b> says <b>Add</b>, tap it and change it to <b>Subtract</b>.',
+    '<b>Find Photos</b> and <b>Quick Look</b> are untouched, so the filters you already built stay exactly as they are.',
+    'To satisfy yourself the clipboard is carrying the numbers before you run anything: tap a trip’s 📷 link, then touch and hold in any text box — a search field will do — and choose <b>Paste</b>. Two numbers should appear.',
   ],
   SHORTCUT_FINAL_DAYS: [
-    'Split <b>Shortcut Input</b> by <b>Custom</b> <b>,</b>',
-    'Get <b>First Item</b> from <b>Split Text</b>',
-    'Get numbers from <b>Item from List</b>',
-    'Subtract <b>Numbers</b> <b>days</b> from <b>Current Date</b>',
+    'Get numbers from <b>Clipboard</b>',
+    'Get <b>First Item</b> from <b>Numbers</b>',
+    'Subtract <b>Item from List</b> <b>days</b> from <b>Current Date</b>',
     'Set variable <b>Start</b> to <b>Adjusted Date</b>',
-    'Get <b>Last Item</b> from <b>Split Text</b>',
-    'Get numbers from <b>Item from List</b>',
-    'Subtract <b>Numbers</b> <b>days</b> from <b>Current Date</b>',
+    'Get <b>Last Item</b> from <b>Numbers</b>',
+    'Subtract <b>Item from List</b> <b>days</b> from <b>Current Date</b>',
     'Set variable <b>End</b> to <b>Adjusted Date</b>',
     'Find <b>Photos</b> where <b>All</b> of the following are true — <b>Date Taken</b> <b>is after</b> <b>Start</b>, <b>Date Taken</b> <b>is before</b> <b>End</b>, with <b>Limit</b> off',
     'Show <b>Photos</b> in Quick Look',
@@ -3970,7 +3971,8 @@ const PhotoLinks = {
   // they are matched to what you actually see on screen when it happens.
   SHORTCUT_FIXES: [
     '<b>Start here: a two-action shortcut that shows what arrives</b> — before touching the real one, find out whether anything reaches Shortcuts at all. In the Shortcuts app tap <b>+</b>, rename it <b>Photo Test</b>, tap the <b>ⓘ</b> at the bottom and switch on <b>Show in Share Sheet</b>. Add one action: <b>Quick Look</b>. Tap whatever it names, choose <b>Clear Variable</b>, then pick <b>Shortcut Input</b>. That is the whole shortcut — no dates, no numbers, no variables, no filters, nothing that can be built wrong. Come back here, type <b>Photo Test</b> into <b>Shortcut Name</b> above, press <b>Save</b>, and tap a trip’s 📷 link. Whatever the page sent is now on your screen. Two numbers with a comma between them means the whole chain works and the fault is inside the real shortcut. Two dates means the page is sending the wrong thing and <b>Date Format Sent</b> is what needs changing. A blank or empty preview means nothing arrives, and no amount of work on the real shortcut will help until that is fixed. Put <b>Trip Photos</b> back in the box when you are done.',
-    '<b>“Adjust Date failed because Shortcuts couldn’t convert from Text to Number”</b> — something reached <b>Adjust Date</b> that is not a number, and it can only be one of three things: a date, if the link is sending dates rather than day counts; text that holds a number but was handed over as text, which some versions refuse to read; or <i>nothing at all</i>, because empty is not a number either. Tapping a 📷 link now says which was sent in a dark banner along the bottom of this page, and that banner is still there when you come back from Shortcuts — so read it first. A banner showing dates against a shortcut built to subtract days is the whole fault, and the fix is in this panel, not on your phone: set <b>Date Format Sent</b> above to <b>Days ago, not dates</b> and press <b>Save</b>.',
+    '<b>“Adjust Date failed because Shortcuts couldn’t convert from Text to Number”</b> — read the banner along the bottom of this page first, since it says what the tap actually sent and stays put while you are in Shortcuts. If it names <i>dates</i>, that is the whole fault: set <b>Date Format Sent</b> above to <b>Days ago, not dates</b> and press <b>Save</b>. If it names <i>day counts</i> and the error persists, then the numbers are leaving this page correctly and something between the input and <b>Adjust Date</b> is losing them — which is what the day-count steps below now avoid entirely, by reading the numbers straight out of the clipboard instead of splitting text.',
+    '<b>The separator you can’t see</b> — that same error appears when <b>Split Text</b> has a stray space after its comma, because “2371 2348” then never gets split and the whole line arrives at <b>Adjust Date</b> as one lump. Nothing on screen shows the difference between “,” and “, ” in that box. It is the reason the day-count steps below do away with <b>Split Text</b>: <b>Get Numbers from Input</b> picks the numbers out itself and there is no separator to get wrong.',
     '<b>The red error is still on the action after you change something</b> — it is a record of the last run, not a live warning, and nothing clears it but running the shortcut again. So an editor still showing red tells you nothing about the change you just made: what counts is what happens on screen <i>while</i> it runs, which is why the tests here all end in something you can see — a box asking you to type, or photos.',
     '<b>Proving the shortcut on its own</b> — with “If there’s no input” set to <b>Ask For</b> <b>Text</b>, tap the <b>▶</b> in the Shortcuts editor. Started from there it gets no input, so it must stop and ask; type <b>10,0</b> and tap Done. If the last ten days of photos appear, every action below the input is right and only what the page sends is wrong. If it still fails on <b>Adjust Date</b> having been handed a plain <b>10</b>, then that version really will not read a number out of text, and it needs <b>Get Numbers from Input</b> as in the day-count steps below. This separates the two halves of the problem completely, which no other test does.',
     '<b>Which of the three, in one tap</b> — the action to change is the one already at the very top of the shortcut, the first card above <b>Split Text</b>, and nothing needs adding to use it. It reads “Receive <i>something</i> from <b>Share Sheet</b>” — where <i>something</i> may say <b>Any</b>, or may list the types it takes, as in “Receive <b>Apps and 18 more</b> from <b>Share Sheet</b>”. Underneath, in grey, it says “If there’s no input:”, and on the line below that sits a blue <b>Continue</b>. Tap that <b>Continue</b> and change it to <b>Ask For</b>, then choose <b>Text</b>. Then start the shortcut from a trip’s 📷 link on this page. Reaching the old error <i>without</i> being asked to type anything is itself an answer: text did arrive, and it was the wrong sort. If a box appears asking you to type something, nothing was passed in and no step below it can work — that is the fault to chase, and the items about blank dates below are the ones to read. If no box appears, the text did arrive, so either the link is sending dates while the shortcut expects numbers (set <b>Date Format Sent</b> above to <b>Days ago, not dates</b> and press <b>Save</b>) or the number needs <b>Get Numbers from Input</b> ahead of <b>Adjust Date</b>, as in the day-count steps below. Either way, if the box does appear, type <b>10,0</b> into it: the shortcut should then show the last ten days of photos, which proves everything below the input is built correctly and only the input is missing. Set it back to <b>Continue</b> when you are done.',
@@ -4159,7 +4161,7 @@ const PhotoLinks = {
     // shows up only as a conversion error inside Shortcuts.
     $('#pl-needs').textContent = !sent ? ''
       : $('#pl-shortcut-date')?.value === this.DAYS_MODE
-        ? 'So the shortcut needs the Adjust Date steps — “Get numbers from Item from List”, then “Subtract Numbers days from Current Date”.'
+        ? 'So the shortcut needs the Adjust Date steps — “Get numbers from Clipboard”, then “Subtract Item from List days from Current Date”.'
         : 'So the shortcut needs the Get Dates from Input steps — “Get dates from Item from List”.';
     $('#pl-note').textContent = preset === 'apple' && !this.onAppleDevice()
       ? 'This browser can’t run shortcuts, so here the links open iCloud.com. On your iPhone, iPad or Mac they run the shortcut.'
@@ -8092,7 +8094,7 @@ const AIImport = {
 // is what makes both the check and the reload skip the stored copy.
 // The version is the number of the pull request that published it, so that what
 // the page calls itself and what was merged are the same thing.
-const PAGE_VERSION = '#10';
+const PAGE_VERSION = '#11';
 
 const Version = {
   MIN_GAP: 5 * 60 * 1000,
