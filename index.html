@@ -206,6 +206,22 @@
     #content { flex: 1; padding: 24px; max-width: 1100px; width: 100%; margin: 0 auto; }
 
     /* ── Dashboard ─────────────────────────────────────── */
+    /* Which copy of the page you are looking at, said out loud: from a Home
+       Screen icon there is no address bar to check, and no way to reload. */
+    .version-strip {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      flex-wrap: wrap; margin-bottom: 16px; padding: 8px 14px; border-radius: 8px;
+      background: var(--card); box-shadow: var(--shadow); cursor: pointer;
+      font-size: 12px; color: var(--muted);
+    }
+    .version-strip code {
+      background: #f1f5f9; border-radius: 4px; padding: 1px 6px;
+      font-size: 12px; color: var(--text); font-weight: 600;
+    }
+    .version-strip.stale {
+      background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; font-weight: 600;
+    }
+    .version-strip.stale code { background: #fef3c7; color: #92400e; }
     .stats-grid {
       display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;
     }
@@ -1214,6 +1230,7 @@ const Views = {
     const totalCruises  = d.itineraries.reduce((s,i)=>s+i.cruises.length,0);
 
     let html = `
+      ${Version.strip()}
       <div class="stats-grid">
         <div class="stat-card accent-blue" onclick="Router.go('trips')" style="cursor:pointer" title="View all trips">
           <div class="label">Total Trips</div>
@@ -3952,6 +3969,7 @@ const PhotoLinks = {
   // Each of these is a mistake the shortcut can't tell you about plainly, so
   // they are matched to what you actually see on screen when it happens.
   SHORTCUT_FIXES: [
+    '<b>Start here: a two-action shortcut that shows what arrives</b> — before touching the real one, find out whether anything reaches Shortcuts at all. In the Shortcuts app tap <b>+</b>, rename it <b>Photo Test</b>, tap the <b>ⓘ</b> at the bottom and switch on <b>Show in Share Sheet</b>. Add one action: <b>Quick Look</b>. Tap whatever it names, choose <b>Clear Variable</b>, then pick <b>Shortcut Input</b>. That is the whole shortcut — no dates, no numbers, no variables, no filters, nothing that can be built wrong. Come back here, type <b>Photo Test</b> into <b>Shortcut Name</b> above, press <b>Save</b>, and tap a trip’s 📷 link. Whatever the page sent is now on your screen. Two numbers with a comma between them means the whole chain works and the fault is inside the real shortcut. Two dates means the page is sending the wrong thing and <b>Date Format Sent</b> is what needs changing. A blank or empty preview means nothing arrives, and no amount of work on the real shortcut will help until that is fixed. Put <b>Trip Photos</b> back in the box when you are done.',
     '<b>“Adjust Date failed because Shortcuts couldn’t convert from Text to Number”</b> — something reached <b>Adjust Date</b> that is not a number, and it can only be one of three things: a date, if the link is sending dates rather than day counts; text that holds a number but was handed over as text, which some versions refuse to read; or <i>nothing at all</i>, because empty is not a number either. Tapping a 📷 link now says which was sent in a dark banner along the bottom of this page, and that banner is still there when you come back from Shortcuts — so read it first. A banner showing dates against a shortcut built to subtract days is the whole fault, and the fix is in this panel, not on your phone: set <b>Date Format Sent</b> above to <b>Days ago, not dates</b> and press <b>Save</b>.',
     '<b>The red error is still on the action after you change something</b> — it is a record of the last run, not a live warning, and nothing clears it but running the shortcut again. So an editor still showing red tells you nothing about the change you just made: what counts is what happens on screen <i>while</i> it runs, which is why the tests here all end in something you can see — a box asking you to type, or photos.',
     '<b>Proving the shortcut on its own</b> — with “If there’s no input” set to <b>Ask For</b> <b>Text</b>, tap the <b>▶</b> in the Shortcuts editor. Started from there it gets no input, so it must stop and ask; type <b>10,0</b> and tap Done. If the last ten days of photos appear, every action below the input is right and only what the page sends is wrong. If it still fails on <b>Adjust Date</b> having been handed a plain <b>10</b>, then that version really will not read a number out of text, and it needs <b>Get Numbers from Input</b> as in the day-count steps below. This separates the two halves of the problem completely, which no other test does.',
@@ -4070,6 +4088,12 @@ const PhotoLinks = {
         <p class="hint" id="pl-note"></p>
         <p class="hint"><a id="pl-test" href="#" onclick="PhotoLinks.arm(this)"
           style="color:var(--blue);text-decoration:underline">Test this link</a></p>
+        <p class="hint">
+          Page version <code>${h(PAGE_VERSION)}</code>, after the pull request that published it.
+          If that isn’t the version you were told to expect, this is a stored copy of an older page —
+          <a href="#" onclick="Version.reload();return false"
+            style="color:var(--blue);text-decoration:underline">load the current one</a>.
+        </p>
       </div>`;
     Modal.show('Photo Links', body, 'Save', () => {
       const p = $('#pl-preset').value;
@@ -8059,9 +8083,101 @@ const AIImport = {
   },
 };
 
+// ══════════════════════════════════════════════════════════════
+//  PAGE VERSION
+// ══════════════════════════════════════════════════════════════
+// Kept as an icon on the Home Screen, this page has no address bar, no reload
+// button and no way to tell which copy of itself iOS has kept. So it says which
+// version it is, and asks the server whether a newer one exists. A query string
+// is what makes both the check and the reload skip the stored copy.
+// The version is the number of the pull request that published it, so that what
+// the page calls itself and what was merged are the same thing.
+const PAGE_VERSION = '#10';
+
+const Version = {
+  MIN_GAP: 5 * 60 * 1000,
+  _last: 0,
+  state: 'unknown',   // unknown | current | stale | offline
+  newer: '',
+
+  NOTE: {
+    unknown: 'checking for a newer one…',
+    current: 'up to date',
+    offline: 'couldn’t reach the server to check',
+  },
+  note() {
+    return this.state === 'stale'
+      ? `version ${this.newer} is published — tap to load it`
+      : this.NOTE[this.state];
+  },
+
+  // Sits at the top of the dashboard, so the answer to "am I on the new one?"
+  // never needs asking.
+  strip() {
+    const stale = this.state === 'stale';
+    return `<div class="version-strip${stale ? ' stale' : ''}" id="version-strip"
+      onclick="Version.${stale ? 'reload' : 'recheck'}()"
+      title="${stale ? 'Load the published version' : 'Check for a newer version'}">
+      <span>Version <code>${h(PAGE_VERSION)}</code></span>
+      <span>${h(this.note())}</span></div>`;
+  },
+
+  _paint() {
+    const el = document.getElementById('version-strip');
+    if (el) el.outerHTML = this.strip();
+  },
+
+  recheck() {
+    this._last = 0;
+    this.state = 'unknown';
+    this._paint();
+    this.check();
+  },
+
+  async check() {
+    if (Date.now() - this._last < this.MIN_GAP) return;
+    this._last = Date.now();
+    try {
+      const res = await fetch(`${location.pathname}?v=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(String(res.status));
+      // The definition above is the first match in the file; this pattern's own
+      // source is the second, which is why order matters here.
+      const m = new RegExp("PAGE_VERSION = '([^']+)'").exec(await res.text());
+      this.newer = m ? m[1] : PAGE_VERSION;
+      this.state = this.newer === PAGE_VERSION ? 'current' : 'stale';
+      if (this.state === 'stale') this._offer();
+    } catch (e) {
+      this.state = 'offline';   // no network, or opened as a file
+    }
+    this._paint();
+  },
+
+  reload() { location.replace(`${location.pathname}?v=${Date.now()}`); },
+
+  // Also said as a banner, since a stale page matters most on the views that
+  // have no room for the strip — and on the way back from Shortcuts.
+  _offer() {
+    if (document.getElementById('version-toast')) return;
+    const el = document.createElement('div');
+    el.id = 'version-toast';
+    el.className = 'pl-toast';
+    el.innerHTML = `This page is version <code>${h(PAGE_VERSION)}</code> and
+      <code>${h(this.newer)}</code> is now published. <b>Tap here to load it.</b>`;
+    el.onclick = () => this.reload();
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 30000);
+  },
+};
+
 // Start the app
 DnD.init();
 App.init();
+setTimeout(() => Version.check(), 2500);
+// Coming back from Shortcuts doesn't reload the page, so this is the moment
+// worth re-checking: it is exactly when a stale copy causes the most confusion.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) Version.check();
+});
 </script>
 </body>
 </html>
