@@ -4089,8 +4089,8 @@ const PhotoLinks = {
         <p class="hint"><a id="pl-test" href="#" onclick="PhotoLinks.arm(this)"
           style="color:var(--blue);text-decoration:underline">Test this link</a></p>
         <p class="hint">
-          Page version <code>${h(PAGE_VERSION)}</code>. If that isn’t the version you were told to
-          expect, this is a stored copy of an older page —
+          Page version <code>${h(PAGE_VERSION)}</code>, after the pull request that published it.
+          If that isn’t the version you were told to expect, this is a stored copy of an older page —
           <a href="#" onclick="Version.reload();return false"
             style="color:var(--blue);text-decoration:underline">load the current one</a>.
         </p>
@@ -8090,7 +8090,9 @@ const AIImport = {
 // button and no way to tell which copy of itself iOS has kept. So it says which
 // version it is, and asks the server whether a newer one exists. A query string
 // is what makes both the check and the reload skip the stored copy.
-const PAGE_VERSION = '2026-08-30.10';
+// The version is the number of the pull request that published it, so that what
+// the page calls itself and what was merged are the same thing.
+const PAGE_VERSION = '#10';
 
 const Version = {
   MIN_GAP: 5 * 60 * 1000,
