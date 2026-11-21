@@ -3689,7 +3689,7 @@ const Photos = {
   // A picture of an outfit, laid out from the photos of its garments: a flat-lay
   // with each piece named underneath. Portrait, to match the outfit thumbnail.
   // Garments without a photo get a tile with their icon, so nothing goes missing.
-  CAT_ORDER: ['Dresses', 'Tops', 'Outerwear', 'Bottoms', 'Underlayers', 'Pajamas', 'Swim', 'Shoes', 'Scarves', 'Accessories'],
+  CAT_ORDER: ['Dresses', 'Tops', 'Outerwear', 'Vests', 'Outdoor Coats', 'Bottoms', 'Underlayers', 'Pajamas', 'Swim', 'Shoes', 'Scarves', 'Accessories'],
 
   // The grid that gives the garment photos (about 3:4) the most room.
   _grid(n, W, H) {
@@ -4842,8 +4842,8 @@ const Packing = {
 // ══════════════════════════════════════════════════════════════
 const Outfits = {
   SLOTS: ['Travel','Daytime','Evening','Formal','Beach','Active'],
-  CATS:  ['Tops','Bottoms','Dresses','Outerwear','Shoes','Accessories','Scarves','Swim','Underlayers','Pajamas'],
-  CAT_ICON: { Tops:'👕', Bottoms:'👖', Dresses:'👗', Outerwear:'🧥', Shoes:'👟',
+  CATS:  ['Tops','Bottoms','Dresses','Outerwear','Vests','Outdoor Coats','Shoes','Accessories','Scarves','Swim','Underlayers','Pajamas'],
+  CAT_ICON: { Tops:'👕', Bottoms:'👖', Dresses:'👗', Outerwear:'🧥', Vests:'🦺', 'Outdoor Coats':'🌨️', Shoes:'👟',
               Accessories:'👜', Scarves:'🧣', Swim:'🩱', Underlayers:'🧦', Pajamas:'🛌' },
   LAUNDRY_EVERY: 7,   // days between assumed laundry when a trip runs long
 
@@ -4881,7 +4881,9 @@ const Outfits = {
     if (/swim|bikini|trunks|rash guard|cover-?up/.test(s))                      return 'Swim';
     if (/shoe|sneaker|boot|sandal|heel|flip flop|loafer|trainer/.test(s))       return 'Shoes';
     if (Outfits.SCARF_WORDS.test(s))                                            return 'Scarves';
-    if (/coat|jacket|sweater|cardigan|hoodie|blazer|fleece|pullover/.test(s))   return 'Outerwear';
+    if (/\bvests?\b|gilet/.test(s))                                             return 'Vests';
+    if (/coat|parka|puffer|anorak|windbreaker|trench|(rain|ski|snow|winter|down) jacket/.test(s)) return 'Outdoor Coats';
+    if (/jacket|sweater|cardigan|hoodie|blazer|fleece|pullover/.test(s))        return 'Outerwear';
     if (/dress|gown|jumpsuit|romper/.test(s))                                   return 'Dresses';
     if (/pant|jean|short|skirt|legging|trouser|chino|slack/.test(s))            return 'Bottoms';
     if (/sock|underwear|bra|tights|thermal|base layer/.test(s))                 return 'Underlayers';
@@ -8758,7 +8760,7 @@ const AIImport = {
 // is what makes both the check and the reload skip the stored copy.
 // The version is the number of the pull request that published it, so that what
 // the page calls itself and what was merged are the same thing.
-const PAGE_VERSION = '#20';
+const PAGE_VERSION = '#1';
 
 const Version = {
   MIN_GAP: 5 * 60 * 1000,
