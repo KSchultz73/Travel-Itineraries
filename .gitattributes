@@ -1,0 +1,7 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Closet photos are binary; never touch their bytes.
+*.jpg -text
+*.jpeg -text
+*.png -text

@@ -1,0 +1,23 @@
+# ──────────────────────────────────────────────────────────────
+# Only the app's CODE belongs on GitHub. Trips, closet and every photo
+# live in Dropbox (Apps/Travel Itineraries) and never in this repository.
+# ──────────────────────────────────────────────────────────────
+
+# Trip and closet data
+travel-data.json
+travel-data*.json
+closet-suggestions.json
+
+# Photos of clothing, kept on this computer only
+Closet/
+closet-photos/
+wardrobe/
+outfits/
+attachments/
+
+# Photos of any kind (the app's own icons are .png/.svg and stay allowed)
+*.jpg
+*.jpeg
+*.heic
+*.heif
+*.webp
